@@ -188,26 +188,66 @@ async def settings_page(request: Request, db: Session = Depends(get_db)):
 
 # ── Action / API Routes ──────────────────────────────────────────────────────
 
-@app.post("/api/scrape")
-async def trigger_scrape():
-    """Trigger the background scraping pipeline."""
+from fastapi import BackgroundTasks
+
+# Global matching task states
+IS_MATCHING = False
+LAST_MATCHED_COUNT = 0
+
+
+def run_scrape_task():
+    """Wrapper to run async scraping pipeline in a background thread."""
+    import asyncio
     try:
-        summary = await run_all_scrapers()
-        return {"status": "success", "summary": summary}
+        # Create a new event loop for the background thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(run_all_scrapers())
+        loop.close()
     except Exception as e:
-        logger.error("API manual scrape failed: %s", e)
-        return {"status": "error", "message": str(e)}
+        logger.error("Background scrape task failed: %s", e)
+
+
+def run_match_task():
+    """Wrapper to run matching pipeline with a fresh DB session in background."""
+    global IS_MATCHING, LAST_MATCHED_COUNT
+    from app.database.engine import SessionLocal
+    db = SessionLocal()
+    try:
+        summary = run_matching_pipeline(db)
+        LAST_MATCHED_COUNT = summary.get("matched", 0)
+    except Exception as e:
+        logger.error("Background match task failed: %s", e)
+        LAST_MATCHED_COUNT = 0
+    finally:
+        db.close()
+        IS_MATCHING = False
+
+
+@app.post("/api/scrape")
+async def trigger_scrape(background_tasks: BackgroundTasks):
+    """Trigger the background scraping pipeline and return immediately."""
+    background_tasks.add_task(run_scrape_task)
+    return {"status": "success", "message": "Job scraping started in the background."}
 
 
 @app.post("/api/match")
-async def trigger_matching(db: Session = Depends(get_db)):
-    """Trigger job matching on all unmatched jobs."""
-    try:
-        summary = run_matching_pipeline(db)
-        return {"status": "success", "summary": summary}
-    except Exception as e:
-        logger.error("API manual matching failed: %s", e)
-        return {"status": "error", "message": str(e)}
+async def trigger_matching(background_tasks: BackgroundTasks):
+    """Trigger job matching on all unmatched jobs in the background."""
+    global IS_MATCHING
+    IS_MATCHING = True
+    background_tasks.add_task(run_match_task)
+    return {"status": "success", "message": "AI matching pipeline started in the background."}
+
+
+@app.get("/api/match/status")
+async def get_match_status():
+    """Check progress of active AI matching task."""
+    global IS_MATCHING, LAST_MATCHED_COUNT
+    return {
+        "status": "running" if IS_MATCHING else "idle",
+        "matched_count": LAST_MATCHED_COUNT
+    }
 
 
 @app.post("/api/resume/upload")
