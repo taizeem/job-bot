@@ -1,0 +1,39 @@
+[project]
+name = "job-bot"
+version = "1.0.0"
+description = "AI-powered job hunting agent that discovers, matches, and assists with job applications"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0",
+    "alembic",
+    "fastapi",
+    "uvicorn[standard]",
+    "jinja2",
+    "python-dotenv",
+    "httpx",
+    "beautifulsoup4",
+    "lxml",
+    "feedparser",
+    "playwright",
+    "pymupdf",
+    "apscheduler>=3.10",
+    "openai",
+    "python-telegram-bot",
+    "google-auth-oauthlib",
+    "google-api-python-client",
+    "pydantic>=2.0",
+    "pydantic-settings",
+    "rich",
+    "click",
+    "python-dateutil",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "pytest-cov"]
+
+[project.scripts]
+job-bot = "app.main:cli"
+
+[tool.setuptools]
+packages = ["app"]
+

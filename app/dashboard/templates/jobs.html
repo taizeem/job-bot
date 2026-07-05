@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Jobs Discovered - Job Bot{% endblock %}
+{% block page_title %}Discovered Job Opportunities{% endblock %}
+{% block page_subtitle %}Explore and apply to positions scraped from remote-first sites and ATS boards{% endblock %}
+
+{% block content %}
+<!-- Search and Filter Panel -->
+<div class="card" style="margin-bottom: 2rem; padding: 1.25rem 1.5rem;">
+    <form method="GET" action="/jobs" style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+        <div class="form-group" style="flex: 1.5; min-width: 250px; margin-bottom: 0;">
+            <label class="form-label" for="query">Keyword Search</label>
+            <input type="text" id="query" name="query" class="form-input" placeholder="Search title, company, skills..." value="{{ query or '' }}">
+        </div>
+        
+        <div class="form-group" style="width: 180px; margin-bottom: 0;">
+            <label class="form-label" for="min_score">Min Match Score</label>
+            <select id="min_score" name="min_score" class="form-input">
+                <option value="">Any Match</option>
+                <option value="90" {% if min_score == 90 %}selected{% endif %}>≥ 90% Match</option>
+                <option value="80" {% if min_score == 80 %}selected{% endif %}>≥ 80% Match</option>
+                <option value="70" {% if min_score == 70 %}selected{% endif %}>≥ 70% Match</option>
+                <option value="50" {% if min_score == 50 %}selected{% endif %}>≥ 50% Match</option>
+            </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 0.5rem; height: 38px;">
+            <input type="checkbox" id="remote_only" name="remote_only" value="true" {% if remote_only %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+            <label class="form-label" for="remote_only" style="margin-bottom: 0; cursor: pointer; user-select: none;">Remote-only</label>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary" style="height: 38px;">
+                <i class="bx bx-search"></i> Apply Filters
+            </button>
+            <a href="/jobs" class="btn btn-secondary" style="height: 38px;">
+                Reset
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Jobs Table Card -->
+<div class="card">
+    <div class="table-container">
+        {% if jobs %}
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Match</th>
+                    <th>Job Title</th>
+                    <th>Company</th>
+                    <th>Location</th>
+                    <th>Source</th>
+                    <th>Discovered</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td style="width: 90px; vertical-align: middle;">
+                        {% if job.match_score is not none %}
+                            {% set pct = (job.match_score * 100) | round | int %}
+                            {% if pct >= 80 %}
+                                <span class="badge badge-green">{{ pct }}% Match</span>
+                            {% elif pct >= 60 %}
+                                <span class="badge badge-orange">{{ pct }}% Match</span>
+                            {% else %}
+                                <span class="badge badge-red">{{ pct }}% Match</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-blue">Unscored</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 600;">
+                        <a href="/jobs/{{ job.id }}" style="color: #fff; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                            {{ job.title }}
+                            {% if job.remote %}
+                                <i class="bx bx-world" style="color: var(--color-primary); font-size: 1.1rem;" title="Remote Position"></i>
+                            {% endif %}
+                        </a>
+                    </td>
+                    <td style="color: var(--text-secondary);">{{ job.company }}</td>
+                    <td style="color: var(--text-secondary); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ job.location or 'Remote' }}
+                    </td>
+                    <td style="width: 110px;">
+                        <span class="badge badge-blue" style="text-transform: uppercase;">{{ job.source }}</span>
+                    </td>
+                    <td style="color: var(--text-muted); font-size: 0.85rem; width: 110px;">
+                        {{ job.scraped_at.strftime('%b %d, %Y') }}
+                    </td>
+                    <td style="text-align: right; width: 120px;">
+                        <a href="/jobs/{{ job.id }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; font-weight: 500;">
+                            View Details <i class="bx bx-chevron-right" style="margin-left: 0.2rem;"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Pagination Controls -->
+        {% if total_pages > 1 %}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding: 0.5rem 1rem; border-top: 1px solid var(--border-color);">
+            <span style="color: var(--text-secondary); font-size: 0.85rem;">
+                Showing page <b>{{ page }}</b> of <b>{{ total_pages }}</b> ({{ total_items }} total jobs)
+            </span>
+            
+            <div style="display: flex; gap: 0.5rem;">
+                {% if page > 1 %}
+                    <a href="/jobs?page={{ page - 1 }}{% if min_score %}&min_score={{ min_score }}{% endif %}{% if remote_only %}&remote_only=true{% endif %}{% if query %}&query={{ query }}{% endif %}" class="btn btn-secondary" style="padding: 0.4rem 0.875rem; font-size: 0.8rem; font-weight: 500;">
+                        <i class="bx bx-chevron-left"></i> Previous
+                    </a>
+                {% else %}
+                    <button class="btn btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed; padding: 0.4rem 0.875rem; font-size: 0.8rem; font-weight: 500;">
+                        <i class="bx bx-chevron-left"></i> Previous
+                    </button>
+                {% endif %}
+                
+                {% if page < total_pages %}
+                    <a href="/jobs?page={{ page + 1 }}{% if min_score %}&min_score={{ min_score }}{% endif %}{% if remote_only %}&remote_only=true{% endif %}{% if query %}&query={{ query }}{% endif %}" class="btn btn-secondary" style="padding: 0.4rem 0.875rem; font-size: 0.8rem; font-weight: 500;">
+                        Next <i class="bx bx-chevron-right"></i>
+                    </a>
+                {% else %}
+                    <button class="btn btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed; padding: 0.4rem 0.875rem; font-size: 0.8rem; font-weight: 500;">
+                        Next <i class="bx bx-chevron-right"></i>
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div style="text-align: center; padding: 4rem 2rem; color: var(--text-muted);">
+            <i class="bx bx-briefcase-alt" style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-muted);"></i>
+            <h3 style="color: var(--text-secondary); margin-bottom: 0.5rem;">No jobs found</h3>
+            <p style="font-size: 0.95rem;">Try adjusting filters or run job scraping to discover new postings.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Job Bot{% endblock %}</title>
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Boxicons CDN for premium icons -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- Main Style -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- HTMX CDN for simple AJAX loads -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="layout-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand-section">
+                <i class="bx bxs-bot brand-icon"></i>
+                <span class="brand-name">Job Bot</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <li class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+                    <a href="/">
+                        <i class="bx bxs-dashboard"></i>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="nav-item {% if request.url.path.startswith('/jobs') %}active{% endif %}">
+                    <a href="/jobs">
+                        <i class="bx bxs-briefcase"></i>
+                        Jobs Discovered
+                    </a>
+                </li>
+                <li class="nav-item {% if request.url.path == '/applications' %}active{% endif %}">
+                    <a href="/applications">
+                        <i class="bx bxs-calendar-check"></i>
+                        Tracker Board
+                    </a>
+                </li>
+                <li class="nav-item {% if request.url.path == '/settings' %}active{% endif %}">
+                    <a href="/settings">
+                        <i class="bx bxs-cog"></i>
+                        Settings
+                    </a>
+                </li>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <p>Version 1.0.0 (MVP)</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header bar with global pipeline actions -->
+            <header class="header-bar">
+                <div>
+                    <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                    <p class="page-subtitle">{% block page_subtitle %}Job hunting status and logs{% endblock %}</p>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem;">
+                    <button class="btn btn-secondary" onclick="triggerScrape()" id="btn-scrape">
+                        <i class="bx bx-refresh"></i>
+                        Scrape Jobs
+                    </button>
+                    <button class="btn btn-primary" onclick="triggerMatch()" id="btn-match">
+                        <i class="bx bx-brain"></i>
+                        Run AI Matcher
+                    </button>
+                </div>
+            </header>
+
+            <!-- Notifications / Flash banner -->
+            <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;"></div>
+
+            <!-- Page Specific Content -->
+            <div class="animate-fade-in">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Spinner Modal Overlay -->
+    <div id="spinner-overlay" class="modal-overlay">
+        <div style="text-align: center; color: #fff;">
+            <i class="bx bx-loader-alt bx-spin" style="font-size: 3rem; margin-bottom: 1rem; color: var(--color-primary);"></i>
+            <h3 id="spinner-text" style="font-weight: 600;">Processing request...</h3>
+            <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.9rem;">Please do not close this window.</p>
+        </div>
+    </div>
+
+    <script>
+        function showSpinner(text) {
+            document.getElementById('spinner-text').textContent = text;
+            document.getElementById('spinner-overlay').style.display = 'flex';
+        }
+
+        function hideSpinner() {
+            document.getElementById('spinner-overlay').style.display = 'none';
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'card animate-fade-in';
+            toast.style.padding = '1rem 1.5rem';
+            toast.style.marginBottom = '0.75rem';
+            toast.style.display = 'flex';
+            toast.style.alignItems = 'center';
+            toast.style.gap = '0.75rem';
+            toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+            toast.style.animation = 'fadeIn 0.3s ease-out forwards';
+            
+            let color = 'var(--color-primary)';
+            let icon = 'bx-info-circle';
+            if (type === 'success') { color = 'var(--color-success)'; icon = 'bx-check-circle'; }
+            if (type === 'warning') { color = 'var(--color-warning)'; icon = 'bx-error'; }
+            if (type === 'error') { color = 'var(--color-danger)'; icon = 'bx-x-circle'; }
+            
+            toast.style.borderLeft = `4px solid ${color}`;
+            toast.innerHTML = `<i class="bx ${icon}" style="font-size: 1.25rem; color: ${color}"></i><span style="font-size: 0.9rem; font-weight: 500;">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.5s ease';
+                setTimeout(() => toast.remove(), 500);
+            }, 4000);
+        }
+
+        async function triggerScrape() {
+            const btn = document.getElementById('btn-scrape');
+            btn.disabled = true;
+            showSpinner("Scraping jobs from 7+ platforms...");
+            try {
+                const res = await fetch("/api/scrape", { method: "POST" });
+                const data = await res.json();
+                hideSpinner();
+                btn.disabled = false;
+                if (data.status === "success") {
+                    showToast(`Scrape completed! Total: ${data.summary.total_scraped}, New: ${data.summary.new_jobs}`, "success");
+                    // Reload page after a delay to show new data
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showToast(`Scrape failed: ${data.message}`, "error");
+                }
+            } catch (e) {
+                hideSpinner();
+                btn.disabled = false;
+                showToast("Scrape failed: Network connection error.", "error");
+            }
+        }
+
+        async function triggerMatch() {
+            const btn = document.getElementById('btn-match');
+            btn.disabled = true;
+            showSpinner("Running AI match evaluations against primary resume...");
+            try {
+                const res = await fetch("/api/match", { method: "POST" });
+                const data = await res.json();
+                hideSpinner();
+                btn.disabled = false;
+                if (data.status === "success") {
+                    showToast(`Matched: ${data.summary.matched} scored, ${data.summary.failed} failed`, "success");
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showToast(`Matching failed: ${data.message}`, "error");
+                }
+            } catch (e) {
+                hideSpinner();
+                btn.disabled = false;
+                showToast("Matching failed: Network connection error.", "error");
+            }
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

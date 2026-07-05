@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Job Bot{% endblock %}
+{% block page_title %}System Settings{% endblock %}
+{% block page_subtitle %}Manage your resume profile, track target company ATS boards, and configure API integrations{% endblock %}
+
+{% block content %}
+<div class="grid-2col">
+    <!-- Left Column: Resume & Integration Config -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+        <!-- Resume Management Card -->
+        <div class="card">
+            <h3 style="font-weight: 700; margin-bottom: 1.25rem; font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                <i class="bx bx-file-blank" style="color: var(--color-primary);"></i>
+                Primary Resume Profile
+            </h3>
+            
+            {% if resume %}
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h4 style="font-weight: 600; color: #fff;">{{ resume.name }}.pdf</h4>
+                            <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem;">Uploaded: {{ resume.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        </div>
+                        <span class="badge badge-green">Primary</span>
+                    </div>
+                </div>
+            {% else %}
+                <div style="text-align: center; padding: 2rem; border: 1px dashed var(--border-color); border-radius: 8px; margin-bottom: 1.5rem; color: var(--text-muted);">
+                    <i class="bx bx-cloud-upload" style="font-size: 2.5rem; margin-bottom: 0.5rem;"></i>
+                    <p style="font-size: 0.9rem;">No primary resume uploaded yet.</p>
+                </div>
+            {% endif %}
+
+            <form action="/api/resume/upload" method="POST" enctype="multipart/form-data" style="margin-top: 1rem;">
+                <div class="form-group">
+                    <label class="form-label" for="resume-file">Upload New Resume (PDF only)</label>
+                    <input type="file" id="resume-file" name="file" accept=".pdf" class="form-input" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="bx bx-upload"></i> Upload & AI Parse Resume
+                </button>
+            </form>
+        </div>
+
+        <!-- System Preferences Card -->
+        <div class="card">
+            <h3 style="font-weight: 700; margin-bottom: 1.25rem; font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                <i class="bx bx-slider" style="color: var(--color-warning);"></i>
+                Integration Preferences
+            </h3>
+            
+            <div style="display: flex; flex-direction: column; gap: 1rem; font-size: 0.95rem; margin-top: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <span style="color: var(--text-secondary);">AI Model:</span>
+                    <span style="font-family: monospace; font-weight: 600; color: #fff;">{{ ai_model }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <span style="color: var(--text-secondary);">Telegram Token:</span>
+                    <span style="color: var(--text-muted);">
+                        {% if telegram_bot_token %}
+                            Configured <i class="bx bx-check-circle" style="color: var(--color-success);"></i>
+                        {% else %}
+                            Missing <i class="bx bx-x-circle" style="color: var(--color-danger);"></i>
+                        {% endif %}
+                    </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <span style="color: var(--text-secondary);">Telegram Chat ID:</span>
+                    <span style="font-family: monospace; color: var(--text-secondary);">{{ telegram_chat_id or 'Not Configured' }}</span>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin-top: 0.5rem;">
+                    Note: To modify API URLs, credentials, or scheduler intervals, edit the project's local <code>.env</code> file.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Company Tokens -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+        <!-- Tracked Companies Card -->
+        <div class="card">
+            <h3 style="font-weight: 700; margin-bottom: 1.25rem; font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                <i class="bx bx-buildings" style="color: var(--color-success);"></i>
+                Tracked Company Boards
+            </h3>
+            
+            <div class="table-container" style="max-height: 350px; overflow-y: auto;">
+                {% if companies %}
+                <table class="custom-table" style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Integration Type (Token)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for comp in companies %}
+                        <tr>
+                            <td style="font-weight: 600; color: #fff;">{{ comp.name }}</td>
+                            <td>
+                                {% if comp.greenhouse_token %}
+                                    <span class="badge badge-green">Greenhouse ({{ comp.greenhouse_token }})</span>
+                                {% elif comp.lever_token %}
+                                    <span class="badge badge-blue">Lever ({{ comp.lever_token }})</span>
+                                {% elif comp.ashby_token %}
+                                    <span class="badge badge-orange">Ashby ({{ comp.ashby_token }})</span>
+                                {% else %}
+                                    <span class="badge badge-red">Manual</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No target company boards configured yet.</p>
+                {% endif %}
+            </div>
+
+            <!-- Add Company Form -->
+            <div style="border-top: 1px solid var(--border-color); margin-top: 1.5rem; padding-top: 1.5rem;">
+                <h4 style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 1rem;">Add Target Company ATS Board</h4>
+                <form action="/api/companies/add" method="POST">
+                    <div class="form-group">
+                        <label class="form-label" for="comp-name">Company Name</label>
+                        <input type="text" id="comp-name" name="name" class="form-input" required placeholder="e.g. Stripe">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="comp-web">Website URL</label>
+                        <input type="url" id="comp-web" name="website" class="form-input" placeholder="e.g. https://stripe.com">
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 0.75rem;" for="gh-token">Greenhouse Slug</label>
+                            <input type="text" id="gh-token" name="greenhouse_token" class="form-input" placeholder="stripe">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 0.75rem;" for="lev-token">Lever Slug</label>
+                            <input type="text" id="lev-token" name="lever_token" class="form-input" placeholder="palantir">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 0.75rem;" for="ashby-token">Ashby Board</label>
+                            <input type="text" id="ashby-token" name="ashby_token" class="form-input" placeholder="sentry">
+                        </div>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.3;">
+                        Provide the company's slug/token for their careers board to include them in the automated Greenhouse/Lever/Ashby scraping pipeline.
+                    </p>
+                    <button type="submit" class="btn btn-success" style="width: 100%;">
+                        <i class="bx bx-plus"></i> Add Company Board
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

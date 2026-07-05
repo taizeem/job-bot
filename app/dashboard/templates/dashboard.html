@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Job Bot{% endblock %}
+{% block page_title %}Overview Dashboard{% endblock %}
+{% block page_subtitle %}Track job discovery, AI match analysis, and application pipelines{% endblock %}
+
+{% block content %}
+<!-- Alert box if primary resume is missing -->
+{% if not has_resume %}
+<div class="card ai-box" style="margin-bottom: 2rem; border-color: var(--color-warning);">
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <i class="bx bxs-error-circle" style="font-size: 2.5rem; color: var(--color-warning);"></i>
+        <div>
+            <h3 style="color: #fff; font-weight: 700; font-size: 1.1rem;">Missing Primary Resume</h3>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.25rem;">
+                You haven't uploaded or parsed a resume yet. AI job matching, resume tailoring, and cover letter generation will not work until you upload a resume.
+            </p>
+            <a href="/settings" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem; margin-top: 0.75rem;">
+                <i class="bx bx-upload"></i> Upload Resume
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Stats Cards Grid -->
+<div class="stats-grid">
+    <div class="card stat-card" style="--glow-color: rgba(59, 130, 246, 0.15)">
+        <span class="stat-label">Jobs Found</span>
+        <span class="stat-value">{{ total_jobs }}</span>
+    </div>
+    
+    <div class="card stat-card" style="--glow-color: rgba(16, 185, 129, 0.15)">
+        <span class="stat-label">Applied</span>
+        <span class="stat-value">{{ applied_count }}</span>
+    </div>
+    
+    <div class="card stat-card" style="--glow-color: rgba(245, 158, 11, 0.15)">
+        <span class="stat-label">Interviews</span>
+        <span class="stat-value">{{ interview_count }}</span>
+    </div>
+    
+    <div class="card stat-card" style="--glow-color: rgba(239, 68, 68, 0.15)">
+        <span class="stat-label">Rejected</span>
+        <span class="stat-value">{{ rejected_count }}</span>
+    </div>
+    
+    <div class="card stat-card" style="--glow-color: rgba(16, 185, 129, 0.25)">
+        <span class="stat-label">Offers</span>
+        <span class="stat-value" style="color: var(--color-success);">{{ offer_count }}</span>
+    </div>
+</div>
+
+<div class="grid-2col">
+    <!-- Chart Visualizer -->
+    <div class="card">
+        <h3 style="font-weight: 700; margin-bottom: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="bx bx-line-chart" style="color: var(--color-primary);"></i>
+            Application Pipeline Status
+        </h3>
+        <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
+            <canvas id="pipelineChart" style="max-height: 100%; max-width: 100%;"></canvas>
+        </div>
+    </div>
+
+    <!-- Extra Stats & Configuration Quick View -->
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+            <h3 style="font-weight: 700; margin-bottom: 1rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="bx bx-award" style="color: var(--color-success);"></i>
+                AI Job Matching Stats
+            </h3>
+            <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.85rem; font-size: 0.95rem; margin-top: 1rem;">
+                <li style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <span style="color: var(--text-secondary);">High-match Jobs (≥80%):</span>
+                    <span class="badge badge-green">{{ high_matches }}</span>
+                </li>
+                <li style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <span style="color: var(--text-secondary);">Active Scraper Slugs:</span>
+                    <span style="font-weight: 600;">{{ active_companies }} companies</span>
+                </li>
+            </ul>
+        </div>
+
+        <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; gap: 0.5rem;">
+            <a href="/jobs?min_score=80" class="btn btn-secondary" style="flex: 1; font-size: 0.8rem;">
+                <i class="bx bx-check-double"></i> View High Matches
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Event Audit Logs Table -->
+<div class="card">
+    <h3 style="font-weight: 700; margin-bottom: 1.25rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="bx bx-list-check" style="color: var(--color-warning);"></i>
+        Recent System Activity
+    </h3>
+    <div class="table-container">
+        {% if recent_logs %}
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Subsystem</th>
+                    <th>Type</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in recent_logs %}
+                <tr>
+                    <td style="color: var(--text-secondary); width: 180px; font-size: 0.85rem;">
+                        {{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                    </td>
+                    <td style="font-weight: 600; width: 120px;">{{ log.source or 'System' }}</td>
+                    <td style="width: 100px;">
+                        {% if log.event == 'error' %}
+                        <span class="badge badge-red">{{ log.event }}</span>
+                        {% elif log.event == 'match' %}
+                        <span class="badge badge-blue">{{ log.event }}</span>
+                        {% elif log.event == 'scrape' %}
+                        <span class="badge badge-green">{{ log.event }}</span>
+                        {% else %}
+                        <span class="badge badge-orange">{{ log.event }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--text-secondary);">{{ log.message }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+            No logged events. Run scraping to start logging activity.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('pipelineChart').getContext('2d');
+    
+    // Pass counts directly
+    const applied = {{ applied_count }};
+    const interview = {{ interview_count }};
+    const rejected = {{ rejected_count }};
+    const offer = {{ offer_count }};
+    
+    const pipelineChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Applied', 'Interviewing', 'Rejected', 'Offers Received'],
+            datasets: [{
+                data: [applied, interview, rejected, offer],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.65)',  // Blue
+                    'rgba(245, 158, 11, 0.65)',  // Orange
+                    'rgba(239, 68, 68, 0.65)',   // Red
+                    'rgba(16, 185, 129, 0.65)'   // Green
+                ],
+                borderColor: [
+                    '#3b82f6',
+                    '#f59e0b',
+                    '#ef4444',
+                    '#10b981'
+                ],
+                borderWidth: 1.5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#9ca3af',
+                        font: {
+                            family: 'Inter',
+                            size: 11
+                        },
+                        padding: 15
+                    }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+</script>
+{% endblock %}

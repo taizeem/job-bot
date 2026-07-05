@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Application Tracker - Job Bot{% endblock %}
+{% block page_title %}Application Pipeline Tracker{% endblock %}
+{% block page_subtitle %}Visual pipeline tracking your applications from tailoring to offers{% endblock %}
+
+{% block content %}
+<div class="kanban-board animate-fade-in">
+    <!-- Column: Pending -->
+    <div class="kanban-col">
+        <div class="kanban-col-header">
+            <span>Pending / Tailoring</span>
+            <span class="badge badge-blue">
+                {{ applications | selectattr('status', 'equalto', 'pending') | list | length }}
+            </span>
+        </div>
+        <div class="kanban-col-cards">
+            {% for app in applications if app.status == 'pending' %}
+                <div class="kanban-card" onclick="window.location='/jobs/{{ app.job.id }}'">
+                    <h4 style="color: #fff; font-size: 0.9rem; font-weight: 600;">{{ app.job.title }}</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.25rem;">{{ app.job.company }}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+                        <span class="badge badge-blue" style="font-size: 0.65rem;">{{ app.job.source }}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">
+                            {{ app.updated_at.strftime('%m-%d %H:%M') }}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Column: Applied -->
+    <div class="kanban-col">
+        <div class="kanban-col-header">
+            <span>Applied</span>
+            <span class="badge badge-blue">
+                {{ applications | selectattr('status', 'equalto', 'applied') | list | length }}
+            </span>
+        </div>
+        <div class="kanban-col-cards">
+            {% for app in applications if app.status == 'applied' %}
+                <div class="kanban-card" onclick="window.location='/jobs/{{ app.job.id }}'">
+                    <h4 style="color: #fff; font-size: 0.9rem; font-weight: 600;">{{ app.job.title }}</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.25rem;">{{ app.job.company }}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+                        <span class="badge badge-blue" style="font-size: 0.65rem;">{{ app.job.source }}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">
+                            {{ app.updated_at.strftime('%m-%d %H:%M') }}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Column: Interviewing -->
+    <div class="kanban-col">
+        <div class="kanban-col-header">
+            <span>Interviewing</span>
+            <span class="badge badge-orange">
+                {{ applications | selectattr('status', 'equalto', 'interview') | list | length }}
+            </span>
+        </div>
+        <div class="kanban-col-cards">
+            {% for app in applications if app.status == 'interview' %}
+                <div class="kanban-card" style="border-left: 3px solid var(--color-warning);" onclick="window.location='/jobs/{{ app.job.id }}'">
+                    <h4 style="color: #fff; font-size: 0.9rem; font-weight: 600;">{{ app.job.title }}</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.25rem;">{{ app.job.company }}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+                        <span class="badge badge-orange" style="font-size: 0.65rem;">{{ app.job.source }}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">
+                            {{ app.updated_at.strftime('%m-%d %H:%M') }}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Column: Rejected -->
+    <div class="kanban-col">
+        <div class="kanban-col-header">
+            <span>Rejected</span>
+            <span class="badge badge-red">
+                {{ applications | selectattr('status', 'equalto', 'rejected') | list | length }}
+            </span>
+        </div>
+        <div class="kanban-col-cards">
+            {% for app in applications if app.status == 'rejected' %}
+                <div class="kanban-card" style="opacity: 0.7;" onclick="window.location='/jobs/{{ app.job.id }}'">
+                    <h4 style="color: #fff; font-size: 0.9rem; font-weight: 600;">{{ app.job.title }}</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.25rem;">{{ app.job.company }}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+                        <span class="badge badge-red" style="font-size: 0.65rem;">{{ app.job.source }}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">
+                            {{ app.updated_at.strftime('%m-%d') }}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Column: Offers -->
+    <div class="kanban-col" style="border-color: rgba(16, 185, 129, 0.2);">
+        <div class="kanban-col-header" style="border-bottom-color: rgba(16, 185, 129, 0.4);">
+            <span style="color: var(--color-success);">Offers</span>
+            <span class="badge badge-green">
+                {{ applications | selectattr('status', 'equalto', 'offer') | list | length }}
+            </span>
+        </div>
+        <div class="kanban-col-cards">
+            {% for app in applications if app.status == 'offer' %}
+                <div class="kanban-card" style="border: 1px solid var(--color-success); box-shadow: 0 4px 15px -5px var(--color-success-glow);" onclick="window.location='/jobs/{{ app.job.id }}'">
+                    <h4 style="color: #fff; font-size: 0.9rem; font-weight: 600;">{{ app.job.title }}</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.25rem;">{{ app.job.company }}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+                        <span class="badge badge-green" style="font-size: 0.65rem;">{{ app.job.source }}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">
+                            {{ app.updated_at.strftime('%m-%d') }}
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
