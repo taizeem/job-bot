@@ -209,6 +209,7 @@ from fastapi import BackgroundTasks
 # Global matching task states
 IS_MATCHING = False
 LAST_MATCHED_COUNT = 0
+LAST_DELETED_COUNT = 0
 
 
 def run_scrape_task():
@@ -226,15 +227,17 @@ def run_scrape_task():
 
 def run_match_task():
     """Wrapper to run matching pipeline with a fresh DB session in background."""
-    global IS_MATCHING, LAST_MATCHED_COUNT
+    global IS_MATCHING, LAST_MATCHED_COUNT, LAST_DELETED_COUNT
     from app.database.engine import SessionLocal
     db = SessionLocal()
     try:
         summary = run_matching_pipeline(db)
         LAST_MATCHED_COUNT = summary.get("matched", 0)
+        LAST_DELETED_COUNT = summary.get("deleted", 0)
     except Exception as e:
         logger.error("Background match task failed: %s", e)
         LAST_MATCHED_COUNT = 0
+        LAST_DELETED_COUNT = 0
     finally:
         db.close()
         IS_MATCHING = False
@@ -259,10 +262,11 @@ async def trigger_matching(background_tasks: BackgroundTasks):
 @app.get("/api/match/status")
 async def get_match_status():
     """Check progress of active AI matching task."""
-    global IS_MATCHING, LAST_MATCHED_COUNT
+    global IS_MATCHING, LAST_MATCHED_COUNT, LAST_DELETED_COUNT
     return {
         "status": "running" if IS_MATCHING else "idle",
-        "matched_count": LAST_MATCHED_COUNT
+        "matched_count": LAST_MATCHED_COUNT,
+        "deleted_count": LAST_DELETED_COUNT
     }
 
 

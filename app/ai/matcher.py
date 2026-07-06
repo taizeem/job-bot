@@ -166,7 +166,11 @@ def run_matching_pipeline(db: Session) -> dict[str, int]:
     logger.info("Found %d unmatched jobs to process.", len(unmatched_jobs))
     processed = 0
     matched = 0
+    deleted = 0
     failed = 0
+
+    from app.config import settings
+    from app.database.models import Application
 
     for job in unmatched_jobs:
         processed += 1
@@ -175,13 +179,21 @@ def run_matching_pipeline(db: Session) -> dict[str, int]:
                 job.description,
                 primary_resume.parsed_data
             )
+            
+            # Check if job is a low match and should be deleted
+            if settings.delete_unmatched_jobs and score < settings.min_match_threshold:
+                # Double check no application exists before deleting (safety check)
+                has_app = db.query(Application).filter(Application.job_id == job.id).first() is not None
+                if not has_app:
+                    db.delete(job)
+                    db.commit()
+                    deleted += 1
+                    logger.info("Deleted job ID %d (%s) - Low Score: %.2f (Threshold: %.2f)", job.id, job.title, score, settings.min_match_threshold)
+                    continue
+
+            # Otherwise, keep the job and save the evaluation
             job.match_score = score
             job.ai_summary = summary
-            
-            # Extract skills list from structured evaluation if possible
-            # We can also update the job's skills field with the matched/missing skills
-            # but we keep the scraped skills primary.
-            
             db.commit()
             matched += 1
             logger.info("Matched job ID %d (%s) - Score: %.2f", job.id, job.title, score)
@@ -190,4 +202,9 @@ def run_matching_pipeline(db: Session) -> dict[str, int]:
             failed += 1
             logger.error("Error matching job ID %d: %s", job.id, e)
 
-    return {"processed": processed, "matched": matched, "failed": failed}
+    return {
+        "processed": processed,
+        "matched": matched,
+        "deleted": deleted,
+        "failed": failed
+    }

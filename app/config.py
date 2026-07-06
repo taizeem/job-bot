@@ -46,6 +46,14 @@ class Settings(BaseSettings):
         default="gpt-4o-mini",
         description="Model name to use for AI completions.",
     )
+    delete_unmatched_jobs: bool = Field(
+        default=True,
+        description="If True, delete jobs with match score below the minimum threshold during evaluation."
+    )
+    min_match_threshold: float = Field(
+        default=0.50,
+        description="Minimum match score threshold (0.0 to 1.0) below which jobs will be deleted."
+    )
 
     # ── Telegram ─────────────────────────────────────────────────────────
     telegram_bot_token: Optional[str] = Field(
