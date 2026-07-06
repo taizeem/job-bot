@@ -93,9 +93,15 @@ class LeverScraper(BaseScraper):
                     company_name,
                 )
             except httpx.HTTPStatusError as exc:
-                self.logger.error(
-                    "Lever HTTP error for slug '%s': %s", slug, exc
-                )
+                if exc.response.status_code == 404:
+                    self.logger.warning(
+                        "Lever board for '%s' returned 404 (Not Found). It may have migrated to a different ATS.",
+                        slug,
+                    )
+                else:
+                    self.logger.error(
+                        "Lever HTTP error for slug '%s': %s", slug, exc
+                    )
             except (httpx.RequestError, Exception) as exc:
                 self.logger.error(
                     "Lever request failed for slug '%s': %s", slug, exc

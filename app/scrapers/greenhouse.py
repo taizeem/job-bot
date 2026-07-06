@@ -92,9 +92,15 @@ class GreenhouseScraper(BaseScraper):
                     company_name,
                 )
             except httpx.HTTPStatusError as exc:
-                self.logger.error(
-                    "Greenhouse HTTP error for board '%s': %s", token, exc
-                )
+                if exc.response.status_code == 404:
+                    self.logger.warning(
+                        "Greenhouse board for '%s' returned 404 (Not Found). It may have migrated to a different ATS.",
+                        token,
+                    )
+                else:
+                    self.logger.error(
+                        "Greenhouse HTTP error for board '%s': %s", token, exc
+                    )
             except (httpx.RequestError, Exception) as exc:
                 self.logger.error(
                     "Greenhouse request failed for board '%s': %s", token, exc

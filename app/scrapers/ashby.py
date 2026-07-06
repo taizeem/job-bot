@@ -102,9 +102,15 @@ class AshbyScraper(BaseScraper):
                     company_name,
                 )
             except httpx.HTTPStatusError as exc:
-                self.logger.error(
-                    "Ashby HTTP error for board '%s': %s", board_name, exc
-                )
+                if exc.response.status_code == 404:
+                    self.logger.warning(
+                        "Ashby board for '%s' returned 404 (Not Found). It may have migrated to a different ATS.",
+                        board_name,
+                    )
+                else:
+                    self.logger.error(
+                        "Ashby HTTP error for board '%s': %s", board_name, exc
+                    )
             except (httpx.RequestError, Exception) as exc:
                 self.logger.error(
                     "Ashby request failed for board '%s': %s",

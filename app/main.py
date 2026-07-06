@@ -49,12 +49,10 @@ def init_db_command() -> None:
         {"name": "Reddit", "greenhouse_token": "reddit", "website": "https://reddit.com"},
         {"name": "Airbnb", "greenhouse_token": "airbnb", "website": "https://airbnb.com"},
         {"name": "Vercel", "greenhouse_token": "vercel", "website": "https://vercel.com"},
+        {"name": "Cloudflare", "greenhouse_token": "cloudflare", "website": "https://cloudflare.com"},
         
         # Lever companies
         {"name": "Palantir", "lever_token": "palantir", "website": "https://palantir.com"},
-        {"name": "Cloudflare", "lever_token": "cloudflare", "website": "https://cloudflare.com"},
-        {"name": "Loom", "lever_token": "loom", "website": "https://loom.com"},
-        {"name": "Figma (Lever)", "lever_token": "figma", "website": "https://figma.com"},
         
         # Ashby companies
         {"name": "Sentry", "ashby_token": "sentry", "website": "https://sentry.io"},
