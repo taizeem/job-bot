@@ -86,22 +86,27 @@ class AIClient:
         If it fails (e.g. provider doesn't support structured output), it falls
         back to standard completion with json_mode and parses manually.
         """
-        try:
-            # Attempt official beta parse API (if supported by provider)
-            response = self.client.beta.chat.completions.parse(
-                model=self.model,
-                messages=messages,
-                response_format=response_model,
-                temperature=temperature,
-            )
-            parsed = response.choices[0].message.parsed
-            if parsed is not None:
-                return parsed
-        except Exception as e:
-            logger.warning(
-                "Structured output parse failed or unsupported. Falling back to JSON mode: %s",
-                e,
-            )
+        # Only attempt OpenAI's official beta parse API if we are using the official OpenAI endpoint.
+        # Other providers (like Groq, Ollama) do not support response_format="json_schema" and
+        # will always return HTTP 400. Bypassing saves a network request and silences console warnings.
+        is_openai = "api.openai.com" in self.base_url
+        
+        if is_openai:
+            try:
+                response = self.client.beta.chat.completions.parse(
+                    model=self.model,
+                    messages=messages,
+                    response_format=response_model,
+                    temperature=temperature,
+                )
+                parsed = response.choices[0].message.parsed
+                if parsed is not None:
+                    return parsed
+            except Exception as e:
+                logger.warning(
+                    "Structured output parse failed or unsupported. Falling back to JSON mode: %s",
+                    e,
+                )
 
         # Fallback: JSON mode with manual parsing
         # Build a clean, simplified key list instead of passing raw JSON Schema,
