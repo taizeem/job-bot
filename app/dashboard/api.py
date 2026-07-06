@@ -89,8 +89,8 @@ async def index_page(request: Request, db: Session = Depends(get_db)):
 @app.get("/jobs", response_class=HTMLResponse)
 async def jobs_page(
     request: Request,
-    min_score: Optional[float] = None,
-    remote_only: bool = False,
+    min_score: Optional[str] = None,
+    remote_only: Optional[str] = None,
     query: Optional[str] = None,
     page: int = 1,
     db: Session = Depends(get_db)
@@ -99,10 +99,26 @@ async def jobs_page(
     per_page = 50
     q = db.query(Job)
     
-    if min_score is not None:
-        q = q.filter(Job.match_score >= (min_score / 100.0))
+    # Safely parse min_score as an integer
+    score_val = None
+    if min_score and min_score.strip():
+        try:
+            score_val = int(min_score)
+        except ValueError:
+            try:
+                score_val = int(float(min_score))
+            except ValueError:
+                pass
+
+    if score_val is not None:
+        q = q.filter(Job.match_score >= (score_val / 100.0))
         
-    if remote_only:
+    # Safely parse remote_only checkbox
+    is_remote = False
+    if remote_only and remote_only.lower() in ("true", "1", "on", "yes"):
+        is_remote = True
+        
+    if is_remote:
         q = q.filter(Job.remote == True)
         
     if query:
@@ -128,8 +144,8 @@ async def jobs_page(
         "jobs.html",
         {
             "jobs": jobs,
-            "min_score": min_score,
-            "remote_only": remote_only,
+            "min_score": score_val,
+            "remote_only": is_remote,
             "query": query,
             "page": page,
             "total_pages": total_pages,
