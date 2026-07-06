@@ -213,16 +213,27 @@ LAST_DELETED_COUNT = 0
 
 
 def run_scrape_task():
-    """Wrapper to run async scraping pipeline in a background thread."""
+    """Wrapper to run async scraping pipeline and follow-up matching in a background thread."""
     import asyncio
+    from app.ai.matcher import run_matching_pipeline
+    from app.database.engine import SessionLocal
     try:
-        # Create a new event loop for the background thread
+        # 1. Scraping loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(run_all_scrapers())
         loop.close()
+        
+        # 2. Automated Matching immediately after
+        logger.info("Background Scrape: Scraping complete. Starting follow-up matching pipeline...")
+        db = SessionLocal()
+        try:
+            match_summary = run_matching_pipeline(db)
+            logger.info("Background Scrape Follow-up Matching: %s", match_summary)
+        finally:
+            db.close()
     except Exception as e:
-        logger.error("Background scrape task failed: %s", e)
+        logger.error("Background scrape and match task failed: %s", e)
 
 
 def run_match_task():

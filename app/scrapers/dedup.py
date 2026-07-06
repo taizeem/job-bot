@@ -136,6 +136,82 @@ def deduplicate_jobs(
     return unique_jobs
 
 
+def filter_by_profile(
+    jobs: list[dict[str, Any]],
+    db_session: Session,
+) -> list[dict[str, Any]]:
+    """Filter out scraped jobs that don't match candidate skills or location."""
+    from app.database.models import Resume
+    import re
+    
+    # 1. Fetch primary resume
+    resume = db_session.query(Resume).filter(Resume.is_primary == True).first()
+    if not resume or not resume.parsed_data:
+        # If no resume exists yet, we keep all jobs so they are visible
+        logger.info("No primary resume found in DB during scraping. Keeping all scraped jobs.")
+        return jobs
+        
+    try:
+        profile = json.loads(resume.parsed_data)
+    except Exception:
+        logger.warning("Failed to parse resume JSON profile during scraping filter.")
+        return jobs
+        
+    skills = [s.strip().lower() for s in profile.get("skills", []) if s.strip()]
+    candidate_loc = profile.get("location", "").strip().lower()
+    
+    if not skills:
+        logger.info("Primary resume has no skills defined. Keeping all scraped jobs.")
+        return jobs
+        
+    filtered = []
+    for job in jobs:
+        # Title and Description search fields
+        title = (job.get("title") or "").lower()
+        desc = (job.get("description") or "").lower()
+        job_skills = [s.lower() for s in (job.get("skills") or []) if s]
+        
+        # A. Skills check: Does the job description/title/tags mention at least one skill?
+        has_skill_match = False
+        
+        # 1. Direct match on job tags/skills
+        for s in job_skills:
+            if s in skills:
+                has_skill_match = True
+                break
+                
+        # 2. Text keyword match in title or description using word boundaries
+        if not has_skill_match:
+            for skill in skills:
+                escaped_skill = re.escape(skill)
+                # Word boundary check (\b) to avoid false substring matches
+                pattern = rf"\b{escaped_skill}\b"
+                if re.search(pattern, title) or re.search(pattern, desc):
+                    has_skill_match = True
+                    break
+                    
+        if not has_skill_match:
+            # Skip job - no matching skills
+            logger.debug("Filtering out job %s - no skill overlap.", job.get("title"))
+            continue
+            
+        # B. Location check:
+        # If the job is NOT remote (onsite/hybrid), check if it matches candidate location.
+        is_remote = job.get("remote", False)
+        job_loc = (job.get("location") or "").lower()
+        
+        if not is_remote and candidate_loc and job_loc:
+            # Check if candidate location matches job location
+            if candidate_loc not in job_loc and job_loc not in candidate_loc:
+                logger.debug("Filtering out job %s - location mismatch (Job: %s, Candidate: %s)", job.get("title"), job_loc, candidate_loc)
+                continue
+                
+        filtered.append(job)
+        
+    logger.info("Profile Filter: Kept %d of %d scraped jobs based on resume skills/location", len(filtered), len(jobs))
+    return filtered
+
+
 def store_jobs(
     jobs: list[dict[str, Any]],
     db_session: Session,
@@ -149,10 +225,12 @@ def store_jobs(
     Returns:
         Count of newly inserted jobs.
     """
-    unique = deduplicate_jobs(jobs, db_session)
+    # Filter jobs based on resume profile before deduplication and storage
+    filtered_jobs = filter_by_profile(jobs, db_session)
+    unique = deduplicate_jobs(filtered_jobs, db_session)
 
     if not unique:
-        logger.info("No new jobs to store after deduplication")
+        logger.info("No new jobs to store after filtering and deduplication")
         return 0
 
     added = 0
