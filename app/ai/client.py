@@ -104,12 +104,23 @@ class AIClient:
             )
 
         # Fallback: JSON mode with manual parsing
-        # Append instruction to system message or last message to output valid JSON matching the schema
-        schema_json = json.dumps(response_model.model_json_schema())
-        fallback_messages = list(messages)
+        # Build a clean, simplified key list instead of passing raw JSON Schema,
+        # which confuses open-source models like Llama 3.1.
+        props = response_model.model_json_schema().get("properties", {})
+        key_instructions = []
+        for k, v in props.items():
+            p_type = v.get("type", "string")
+            p_desc = v.get("description", "")
+            key_instructions.append(f"- {k}: {p_type} ({p_desc})")
+            
+        key_list_str = "\n".join(key_instructions)
+        instruction = (
+            f"\n\nYou MUST respond with a single valid JSON object containing these keys:\n"
+            f"{key_list_str}\n\n"
+            f"Do NOT output the schema itself. Return ONLY the JSON object. Do not wrap in a list."
+        )
         
-        # Modify the last user message or append a system instruction
-        instruction = f"\n\nYou MUST respond with valid JSON matching this schema: {schema_json}"
+        fallback_messages = list(messages)
         if fallback_messages:
             last_msg = fallback_messages[-1]
             fallback_messages[-1] = {
@@ -118,8 +129,27 @@ class AIClient:
             }
 
         content = self.chat_completion(fallback_messages, temperature=temperature, json_mode=True)
+        
+        # Clean markdown code block wraps if returned by the LLM
+        cleaned_content = content.strip()
+        if cleaned_content.startswith("```"):
+            lines = cleaned_content.splitlines()
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            cleaned_content = "\n".join(lines).strip()
+            
         try:
-            data = json.loads(content)
+            data = json.loads(cleaned_content)
+            
+            # Handle list-wrap output quirk
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict) and "match_score" in item:
+                        data = item
+                        break
+                        
             return response_model.model_validate(data)
         except Exception as parse_err:
             logger.error("Failed to parse fallback JSON response: %s. Content: %r", parse_err, content)
