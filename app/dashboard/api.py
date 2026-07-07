@@ -29,7 +29,11 @@ from app.ai.cover_letter import generate_cover_letter, save_cover_letter
 
 logger = logging.getLogger(__name__)
 
+from app.dashboard.resume_builder import resume_router
+from app.database.models import UserProfile
+
 app = FastAPI(title="Job Bot Dashboard")
+app.include_router(resume_router)
 
 # Resolve template & static directories relative to this file
 BASE_DIR = Path(__file__).resolve().parent
@@ -66,8 +70,11 @@ async def index_page(request: Request, db: Session = Depends(get_db)):
     # Active companies
     active_companies = db.query(Company).filter(Company.is_active == True).count()
     
-    # Check if primary resume is uploaded
-    has_resume = db.query(Resume).filter(Resume.is_primary == True).first() is not None
+    # Check if primary resume is uploaded OR user profile is built
+    has_pdf_resume = db.query(Resume).filter(Resume.is_primary == True).first() is not None
+    user_profile = db.query(UserProfile).first()
+    has_profile = user_profile is not None and bool(user_profile.name)
+    has_resume = has_pdf_resume or has_profile
 
     return templates.TemplateResponse(
         request,

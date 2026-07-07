@@ -237,6 +237,132 @@ class Log(Base):
         )
 
 
+# ── User Profile (Resume Builder) ────────────────────────────────────────────
+
+
+class UserProfile(Base):
+    """User's resume profile built via the dashboard.
+
+    Stores structured personal info, skills, and job preferences.
+    Skills, preferred_job_titles, and preferred_locations are stored as
+    JSON-serialised lists for simplicity.
+    """
+
+    __tablename__ = "user_profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(default=None)
+    phone: Mapped[Optional[str]] = mapped_column(default=None)
+    location: Mapped[Optional[str]] = mapped_column(default=None)
+    country: Mapped[Optional[str]] = mapped_column(default=None)
+    summary: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    skills: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    preferred_job_titles: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    preferred_locations: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Relationships
+    experiences: Mapped[list["UserExperience"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
+    education: Mapped[list["UserEducation"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
+    projects: Mapped[list["UserProject"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
+    certifications: Mapped[list["UserCertification"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<UserProfile(id={self.id}, name={self.name!r})>"
+
+
+class UserExperience(Base):
+    """A work experience entry in the user's resume profile."""
+
+    __tablename__ = "user_experiences"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("user_profiles.id"), nullable=False
+    )
+    company: Mapped[str] = mapped_column(nullable=False)
+    title: Mapped[str] = mapped_column(nullable=False)
+    start_date: Mapped[Optional[str]] = mapped_column(default=None)
+    end_date: Mapped[Optional[str]] = mapped_column(default=None)
+    is_current: Mapped[bool] = mapped_column(default=False)
+    bullets: Mapped[Optional[str]] = mapped_column(Text, default=None)
+
+    profile: Mapped["UserProfile"] = relationship(back_populates="experiences")
+
+    def __repr__(self) -> str:
+        return f"<UserExperience(id={self.id}, company={self.company!r}, title={self.title!r})>"
+
+
+class UserEducation(Base):
+    """An education entry in the user's resume profile."""
+
+    __tablename__ = "user_education"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("user_profiles.id"), nullable=False
+    )
+    institution: Mapped[str] = mapped_column(nullable=False)
+    degree: Mapped[Optional[str]] = mapped_column(default=None)
+    field: Mapped[Optional[str]] = mapped_column(default=None)
+    year: Mapped[Optional[str]] = mapped_column(default=None)
+
+    profile: Mapped["UserProfile"] = relationship(back_populates="education")
+
+    def __repr__(self) -> str:
+        return f"<UserEducation(id={self.id}, institution={self.institution!r})>"
+
+
+class UserProject(Base):
+    """A project entry in the user's resume profile."""
+
+    __tablename__ = "user_projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("user_profiles.id"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    technologies: Mapped[Optional[str]] = mapped_column(Text, default=None)
+
+    profile: Mapped["UserProfile"] = relationship(back_populates="projects")
+
+    def __repr__(self) -> str:
+        return f"<UserProject(id={self.id}, name={self.name!r})>"
+
+
+class UserCertification(Base):
+    """A certification entry in the user's resume profile."""
+
+    __tablename__ = "user_certifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("user_profiles.id"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(nullable=False)
+
+    profile: Mapped["UserProfile"] = relationship(back_populates="certifications")
+
+    def __repr__(self) -> str:
+        return f"<UserCertification(id={self.id}, name={self.name!r})>"
+
+
 # ── Table Creation Helper ────────────────────────────────────────────────────
 
 

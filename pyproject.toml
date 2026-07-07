@@ -26,6 +26,7 @@ dependencies = [
     "rich",
     "click",
     "python-dateutil",
+    "reportlab",
 ]
 
 [project.optional-dependencies]

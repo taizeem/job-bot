@@ -136,7 +136,8 @@ def match_job_against_resume(
 def run_matching_pipeline(db: Session) -> dict[str, int]:
     """Find all jobs in the database without a match score and score them.
 
-    Scoring is performed against the primary resume in the database.
+    If a UserProfile exists, keyword-based matching is performed.
+    Otherwise, scoring is performed against the primary resume in the database via LLM.
 
     Args:
         db: Active SQLAlchemy session.
@@ -144,7 +145,17 @@ def run_matching_pipeline(db: Session) -> dict[str, int]:
     Returns:
         Summary dict containing counts of processed, matched, and failed matches.
     """
-    # 1. Fetch primary resume
+    from app.database.models import UserProfile
+    from app.ai.keyword_matcher import run_keyword_matching_pipeline
+
+    # 1. Try Keyword Matching via UserProfile first
+    user_profile = db.query(UserProfile).first()
+    if user_profile and user_profile.name:
+        logger.info("Found UserProfile. Running keyword-based matching pipeline...")
+        return run_keyword_matching_pipeline(db)
+
+    # 2. Fallback to legacy PDF Resume LLM Matching
+    logger.info("No UserProfile found or it is empty. Falling back to legacy Resume matching...")
     primary_resume = db.query(Resume).filter(Resume.is_primary == True).first()
     if not primary_resume:
         logger.warning("No primary resume found in database. Cannot run matching pipeline.")

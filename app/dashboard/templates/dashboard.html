@@ -5,18 +5,18 @@
 {% block page_subtitle %}Track job discovery, AI match analysis, and application pipelines{% endblock %}
 
 {% block content %}
-<!-- Alert box if primary resume is missing -->
+<!-- Alert box if resume builder profile is missing -->
 {% if not has_resume %}
 <div class="card ai-box" style="margin-bottom: 2rem; border-color: var(--color-warning);">
     <div style="display: flex; gap: 1rem; align-items: center;">
         <i class="bx bxs-error-circle" style="font-size: 2.5rem; color: var(--color-warning);"></i>
         <div>
-            <h3 style="color: #fff; font-weight: 700; font-size: 1.1rem;">Missing Primary Resume</h3>
+            <h3 style="color: #fff; font-weight: 700; font-size: 1.1rem;">Missing Resume Profile</h3>
             <p style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.25rem;">
-                You haven't uploaded or parsed a resume yet. AI job matching, resume tailoring, and cover letter generation will not work until you upload a resume.
+                You haven't built your resume profile yet. Job matching, resume tailoring, and cover letter generation will not work until you fill in your profile keywords and details.
             </p>
-            <a href="/settings" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem; margin-top: 0.75rem;">
-                <i class="bx bx-upload"></i> Upload Resume
+            <a href="/resume" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem; margin-top: 0.75rem;">
+                <i class="bx bx-file-blank"></i> Build Resume Profile
             </a>
         </div>
     </div>

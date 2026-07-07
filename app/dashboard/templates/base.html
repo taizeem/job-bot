@@ -44,6 +44,12 @@
                         Tracker Board
                     </a>
                 </li>
+                <li class="nav-item {% if request.url.path == '/resume' %}active{% endif %}">
+                    <a href="/resume">
+                        <i class="bx bxs-file-doc"></i>
+                        Resume Builder
+                    </a>
+                </li>
                 <li class="nav-item {% if request.url.path == '/settings' %}active{% endif %}">
                     <a href="/settings">
                         <i class="bx bxs-cog"></i>

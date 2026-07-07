@@ -1,0 +1,807 @@
+{% extends "base.html" %}
+
+{% block title %}Resume Builder - Job Bot{% endblock %}
+{% block page_title %}Resume Profile Builder{% endblock %}
+{% block page_subtitle %}Build your professional resume, manage keywords, and download a print-ready PDF{% endblock %}
+
+{% block head %}
+<style>
+    /* Custom Styling for Resume Builder SPA */
+    .rb-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        padding-bottom: 5rem;
+    }
+    
+    .rb-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .rb-section-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.25rem;
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: #fff;
+    }
+    
+    .rb-section-title i {
+        color: var(--color-primary);
+    }
+    
+    .chip-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: rgba(17, 24, 39, 0.4);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        min-height: 42px;
+        align-items: center;
+    }
+    
+    .rb-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: var(--color-primary-glow);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        padding: 0.25rem 0.65rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .rb-chip i {
+        cursor: pointer;
+        color: #f87171;
+    }
+    
+    .rb-chip i:hover {
+        color: var(--color-danger);
+    }
+    
+    .chip-input-field {
+        background: transparent !important;
+        border: none !important;
+        outline: none !important;
+        color: #fff;
+        padding: 0.25rem;
+        flex-grow: 1;
+        font-family: inherit;
+        font-size: 0.9rem;
+    }
+    
+    .entry-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px dashed var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        position: relative;
+        transition: var(--transition-smooth);
+    }
+    
+    .entry-card:hover {
+        border-color: var(--border-color-active);
+        background: rgba(255, 255, 255, 0.03);
+    }
+    
+    .entry-delete-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(239, 68, 68, 0.1);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 6px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+    }
+    
+    .entry-delete-btn:hover {
+        background: var(--color-danger);
+        color: #fff;
+    }
+    
+    .bullet-row {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        align-items: center;
+    }
+    
+    .sticky-bar {
+        position: fixed;
+        bottom: 0;
+        left: 260px; /* Sidebar width */
+        right: 0;
+        background: rgba(11, 15, 25, 0.85);
+        backdrop-filter: blur(16px);
+        border-top: 1px solid var(--border-color);
+        padding: 1rem 2.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 90;
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+    }
+    
+    @media (max-width: 992px) {
+        .sticky-bar {
+            left: 0;
+            padding: 1rem 1.5rem;
+        }
+    }
+    
+    .grid-fields-2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    
+    @media (max-width: 576px) {
+        .grid-fields-2col {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rb-container animate-fade-in">
+    <!-- Main Form Card -->
+    <div class="card">
+        <form id="resume-form" onsubmit="event.preventDefault();">
+            
+            <!-- 1. Personal Information -->
+            <div class="rb-section">
+                <h3 class="rb-section-title">
+                    <span><i class="bx bxs-user"></i> Personal Information</span>
+                </h3>
+                <div class="grid-fields-2col">
+                    <div class="form-group">
+                        <label class="form-label" for="rb-name">Full Name *</label>
+                        <input type="text" id="rb-name" class="form-input" placeholder="e.g. John Doe" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="rb-email">Email Address</label>
+                        <input type="email" id="rb-email" class="form-input" placeholder="e.g. johndoe@example.com">
+                    </div>
+                </div>
+                <div class="grid-fields-2col">
+                    <div class="form-group">
+                        <label class="form-label" for="rb-phone">Phone Number</label>
+                        <input type="text" id="rb-phone" class="form-input" placeholder="e.g. +1 (555) 019-2834">
+                    </div>
+                    <div class="grid-fields-2col">
+                        <div class="form-group">
+                            <label class="form-label" for="rb-location">City, State</label>
+                            <input type="text" id="rb-location" class="form-input" placeholder="e.g. San Francisco, CA">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rb-country">Country * (For matching)</label>
+                            <input type="text" id="rb-country" class="form-input" placeholder="e.g. United States" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Summary -->
+            <div class="rb-section">
+                <h3 class="rb-section-title">
+                    <span><i class="bx bxs-detail"></i> Professional Summary</span>
+                </h3>
+                <div class="form-group">
+                    <label class="form-label" for="rb-summary">Professional Bio / Summary</label>
+                    <textarea id="rb-summary" class="form-input" rows="4" placeholder="Briefly describe your experience, core values, and top technical strengths..."></textarea>
+                </div>
+            </div>
+
+            <!-- 3. Skills -->
+            <div class="rb-section">
+                <h3 class="rb-section-title">
+                    <span><i class="bx bxs-wrench"></i> Skills & Technologies</span>
+                </h3>
+                <div class="form-group">
+                    <label class="form-label">Core Skills (Press Enter or Comma to add chips)</label>
+                    <div class="chip-container" id="skills-chip-container">
+                        <input type="text" class="chip-input-field" placeholder="Add skill..." onkeydown="handleChipInput(event, 'skills')">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Job Preferences (Keywords for Matching) -->
+            <div class="rb-section">
+                <h3 class="rb-section-title">
+                    <span><i class="bx bxs-select-multiple"></i> Job Matching Preferences</span>
+                </h3>
+                <div class="grid-fields-2col">
+                    <div class="form-group">
+                        <label class="form-label">Preferred Job Titles (e.g. Software Engineer, Frontend Engineer)</label>
+                        <div class="chip-container" id="titles-chip-container">
+                            <input type="text" class="chip-input-field" placeholder="Add title..." onkeydown="handleChipInput(event, 'preferred_job_titles')">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Preferred Locations (e.g. California, Remote, Germany)</label>
+                        <div class="chip-container" id="locs-chip-container">
+                            <input type="text" class="chip-input-field" placeholder="Add location..." onkeydown="handleChipInput(event, 'preferred_locations')">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Professional Experience -->
+            <div class="rb-section">
+                <h3 class="rb-section-title">
+                    <span><i class="bx bxs-briefcase"></i> Work Experience</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addExperienceCard()">+ Add Experience</button>
+                </h3>
+                <div id="experience-list">
+                    <!-- Dynamic Experience Cards go here -->
+                </div>
+            </div>
+
+            <!-- 6. Projects -->
+            <div class="rb-section">
+                <h3 class="rb-section-title">
+                    <span><i class="bx bxs-folder-open"></i> Projects</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addProjectCard()">+ Add Project</button>
+                </h3>
+                <div id="projects-list">
+                    <!-- Dynamic Project Cards go here -->
+                </div>
+            </div>
+
+            <!-- 7. Education -->
+            <div class="rb-section">
+                <h3 class="rb-section-title">
+                    <span><i class="bx bxs-graduation"></i> Education</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addEducationCard()">+ Add Education</button>
+                </h3>
+                <div id="education-list">
+                    <!-- Dynamic Education Cards go here -->
+                </div>
+            </div>
+
+            <!-- 8. Certifications -->
+            <div class="rb-section">
+                <h3 class="rb-section-title">
+                    <span><i class="bx bxs-certification"></i> Certifications</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addCertificationCard()">+ Add Certification</button>
+                </h3>
+                <div id="certifications-list">
+                    <!-- Dynamic Certification list goes here -->
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- Sticky bottom actions bar -->
+<div class="sticky-bar">
+    <div>
+        <a href="/" class="btn btn-secondary">
+            <i class="bx bx-left-arrow-alt"></i> Dashboard
+        </a>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+        <button type="button" class="btn btn-secondary" onclick="downloadResumePDF()" id="btn-download-pdf">
+            <i class="bx bx-download"></i> Download PDF
+        </button>
+        <button type="button" class="btn btn-primary" onclick="saveAllResumeData()" id="btn-save-resume">
+            <i class="bx bx-save"></i> Save Resume Profile
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // State management for chips and deletions
+    const rbState = {
+        skills: [],
+        preferred_job_titles: [],
+        preferred_locations: [],
+        deletedExperienceIds: [],
+        deletedEducationIds: [],
+        deletedProjectIds: [],
+        deletedCertificationIds: []
+    };
+
+    // Load initial profile data
+    document.addEventListener("DOMContentLoaded", async () => {
+        showSpinner("Loading resume profile...");
+        try {
+            const res = await fetch("/api/profile");
+            const data = await res.json();
+            hideSpinner();
+            
+            if (data.profile) {
+                fillProfileForm(data.profile);
+            } else {
+                // Initialize clean page with one blank experience and education
+                addExperienceCard();
+                addEducationCard();
+            }
+        } catch (e) {
+            hideSpinner();
+            showToast("Failed to load profile details.", "error");
+        }
+    });
+
+    function fillProfileForm(profile) {
+        document.getElementById("rb-name").value = profile.name || "";
+        document.getElementById("rb-email").value = profile.email || "";
+        document.getElementById("rb-phone").value = profile.phone || "";
+        document.getElementById("rb-location").value = profile.location || "";
+        document.getElementById("rb-country").value = profile.country || "";
+        document.getElementById("rb-summary").value = profile.summary || "";
+
+        // Fill Chips
+        rbState.skills = profile.skills || [];
+        rbState.preferred_job_titles = profile.preferred_job_titles || [];
+        rbState.preferred_locations = profile.preferred_locations || [];
+
+        renderChips("skills");
+        renderChips("preferred_job_titles");
+        renderChips("preferred_locations");
+
+        // Fill Experience
+        if (profile.experience && profile.experience.length > 0) {
+            profile.experience.forEach(exp => addExperienceCard(exp));
+        } else {
+            addExperienceCard();
+        }
+
+        // Fill Projects
+        if (profile.projects && profile.projects.length > 0) {
+            profile.projects.forEach(proj => addProjectCard(proj));
+        }
+
+        // Fill Education
+        if (profile.education && profile.education.length > 0) {
+            profile.education.forEach(edu => addEducationCard(edu));
+        } else {
+            addEducationCard();
+        }
+
+        // Fill Certifications
+        if (profile.certifications && profile.certifications.length > 0) {
+            profile.certifications.forEach(cert => addCertificationCard(cert));
+        }
+    }
+
+    // ── Chip Inputs ──────────────────────────────────────────────────────────
+    function handleChipInput(event, field) {
+        const input = event.target;
+        const val = input.value.trim();
+        
+        if (event.key === "Enter" || event.key === ",") {
+            event.preventDefault();
+            if (val && !rbState[field].includes(val)) {
+                rbState[field].push(val);
+                renderChips(field);
+            }
+            input.value = "";
+        }
+    }
+
+    function removeChip(field, index) {
+        rbState[field].splice(index, 1);
+        renderChips(field);
+    }
+
+    function renderChips(field) {
+        let containerId = "";
+        if (field === "skills") containerId = "skills-chip-container";
+        if (field === "preferred_job_titles") containerId = "titles-chip-container";
+        if (field === "preferred_locations") containerId = "locs-chip-container";
+        
+        const container = document.getElementById(containerId);
+        // Save the input field element
+        const input = container.querySelector(".chip-input-field");
+        
+        // Remove all previous chips
+        container.querySelectorAll(".rb-chip").forEach(c => c.remove());
+        
+        // Append all current chips
+        rbState[field].forEach((chip, idx) => {
+            const chipEl = document.createElement("span");
+            chipEl.className = "rb-chip";
+            chipEl.innerHTML = `${chip} <i class="bx bx-x" onclick="removeChip('${field}', ${idx})"></i>`;
+            container.insertBefore(chipEl, input);
+        });
+    }
+
+    // ── Dynamic Work Experience ──────────────────────────────────────────────
+    function addExperienceCard(data = {}) {
+        const container = document.getElementById("experience-list");
+        const card = document.createElement("div");
+        card.className = "entry-card exp-entry";
+        card.dataset.id = data.id || "";
+
+        const bulletsHtml = (data.bullets || [""]).map(bullet => `
+            <div class="bullet-row">
+                <input type="text" class="form-input exp-bullet" value="${bullet.replace(/"/g, '&quot;')}" placeholder="Detail your impact, task, or achievements...">
+                <button type="button" class="btn btn-secondary" onclick="this.parentElement.remove()" style="padding: 0.5rem;"><i class="bx bx-trash" style="color: #f87171;"></i></button>
+            </div>
+        `).join("");
+
+        card.innerHTML = `
+            <button type="button" class="entry-delete-btn" onclick="removeExperienceCard(this)"><i class="bx bx-trash"></i></button>
+            <div class="grid-fields-2col">
+                <div class="form-group">
+                    <label class="form-label">Company Name</label>
+                    <input type="text" class="form-input exp-company" value="${data.company || ''}" placeholder="e.g. Google">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Job Title / Role</label>
+                    <input type="text" class="form-input exp-title" value="${data.title || ''}" placeholder="e.g. Software Engineer">
+                </div>
+            </div>
+            <div class="grid-fields-2col">
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="text" class="form-input exp-start" value="${data.start_date || ''}" placeholder="e.g. Jan 2022">
+                </div>
+                <div class="grid-fields-2col">
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input type="text" class="form-input exp-end" value="${data.end_date || ''}" placeholder="e.g. Present" ${data.is_current ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; height: 38px; margin-top: 1.5rem;">
+                        <input type="checkbox" class="exp-current" onchange="toggleEndDate(this)" ${data.is_current ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
+                        <label class="form-label" style="margin-left: 0.5rem; margin-bottom: 0; cursor: pointer; user-select: none;">Currently Work Here</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 1rem;">
+                <label class="form-label">Highlights / Bullet Points</label>
+                <div class="bullets-container">
+                    ${bulletsHtml}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addBulletRow(this)" style="margin-top: 0.5rem;">+ Add Bullet</button>
+            </div>
+        `;
+        container.appendChild(card);
+    }
+
+    function toggleEndDate(checkbox) {
+        const endField = checkbox.closest(".grid-fields-2col").querySelector(".exp-end");
+        endField.disabled = checkbox.checked;
+        if (checkbox.checked) endField.value = "";
+    }
+
+    function addBulletRow(button) {
+        const bulletsContainer = button.previousElementSibling;
+        const row = document.createElement("div");
+        row.className = "bullet-row";
+        row.innerHTML = `
+            <input type="text" class="form-input exp-bullet" placeholder="Detail your impact, task, or achievements...">
+            <button type="button" class="btn btn-secondary" onclick="this.parentElement.remove()" style="padding: 0.5rem;"><i class="bx bx-trash" style="color: #f87171;"></i></button>
+        `;
+        bulletsContainer.appendChild(row);
+    }
+
+    function removeExperienceCard(button) {
+        const card = button.closest(".exp-entry");
+        const id = card.dataset.id;
+        if (id) rbState.deletedExperienceIds.push(id);
+        card.remove();
+    }
+
+    // ── Dynamic Projects ─────────────────────────────────────────────────────
+    function addProjectCard(data = {}) {
+        const container = document.getElementById("projects-list");
+        const card = document.createElement("div");
+        card.className = "entry-card proj-entry";
+        card.dataset.id = data.id || "";
+
+        const techList = data.technologies || [];
+        const uniqueId = "tech-container-" + Math.floor(Math.random() * 100000);
+
+        card.innerHTML = `
+            <button type="button" class="entry-delete-btn" onclick="removeProjectCard(this)"><i class="bx bx-trash"></i></button>
+            <div class="form-group">
+                <label class="form-label">Project Name</label>
+                <input type="text" class="form-input proj-name" value="${data.name || ''}" placeholder="e.g. Portfolio Website">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Technologies Used (Press Enter/Comma to add)</label>
+                <div class="chip-container tech-chip-container" id="${uniqueId}">
+                    <input type="text" class="chip-input-field tech-input" placeholder="Add tech..." onkeydown="handleProjTechInput(event, '${uniqueId}')">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-input proj-desc" rows="2" placeholder="Describe what the project accomplishes...">${data.description || ''}</textarea>
+            </div>
+        `;
+        container.appendChild(card);
+        
+        // Render tech chips
+        card.techList = techList;
+        renderTechChips(uniqueId, card.techList);
+    }
+
+    function handleProjTechInput(event, containerId) {
+        const input = event.target;
+        const val = input.value.trim();
+        const card = input.closest(".proj-entry");
+        
+        if (event.key === "Enter" || event.key === ",") {
+            event.preventDefault();
+            if (val && !card.techList.includes(val)) {
+                card.techList.push(val);
+                renderTechChips(containerId, card.techList);
+            }
+            input.value = "";
+        }
+    }
+
+    function renderTechChips(containerId, list) {
+        const container = document.getElementById(containerId);
+        const input = container.querySelector(".chip-input-field");
+        container.querySelectorAll(".rb-chip").forEach(c => c.remove());
+        
+        list.forEach((item, idx) => {
+            const chip = document.createElement("span");
+            chip.className = "rb-chip";
+            chip.innerHTML = `${item} <i class="bx bx-x" onclick="removeTechChip('${containerId}', ${idx})"></i>`;
+            container.insertBefore(chip, input);
+        });
+    }
+
+    window.removeTechChip = function(containerId, idx) {
+        const container = document.getElementById(containerId);
+        const card = container.closest(".proj-entry");
+        card.techList.splice(idx, 1);
+        renderTechChips(containerId, card.techList);
+    }
+
+    function removeProjectCard(button) {
+        const card = button.closest(".proj-entry");
+        const id = card.dataset.id;
+        if (id) rbState.deletedProjectIds.push(id);
+        card.remove();
+    }
+
+    // ── Dynamic Education ────────────────────────────────────────────────────
+    function addEducationCard(data = {}) {
+        const container = document.getElementById("education-list");
+        const card = document.createElement("div");
+        card.className = "entry-card edu-entry";
+        card.dataset.id = data.id || "";
+
+        card.innerHTML = `
+            <button type="button" class="entry-delete-btn" onclick="removeEducationCard(this)"><i class="bx bx-trash"></i></button>
+            <div class="form-group">
+                <label class="form-label">Institution / School</label>
+                <input type="text" class="form-input edu-institution" value="${data.institution || ''}" placeholder="e.g. Stanford University">
+            </div>
+            <div class="grid-fields-2col">
+                <div class="form-group">
+                    <label class="form-label">Degree</label>
+                    <input type="text" class="form-input edu-degree" value="${data.degree || ''}" placeholder="e.g. B.S. or M.S.">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Field of Study</label>
+                    <input type="text" class="form-input edu-field" value="${data.field || ''}" placeholder="e.g. Computer Science">
+                </div>
+            </div>
+            <div class="form-group" style="width: 150px;">
+                <label class="form-label">Graduation Year</label>
+                <input type="text" class="form-input edu-year" value="${data.year || ''}" placeholder="e.g. 2024">
+            </div>
+        `;
+        container.appendChild(card);
+    }
+
+    function removeEducationCard(button) {
+        const card = button.closest(".edu-entry");
+        const id = card.dataset.id;
+        if (id) rbState.deletedEducationIds.push(id);
+        card.remove();
+    }
+
+    // ── Dynamic Certifications ───────────────────────────────────────────────
+    function addCertificationCard(data = {}) {
+        const container = document.getElementById("certifications-list");
+        const card = document.createElement("div");
+        card.className = "bullet-row cert-entry";
+        card.dataset.id = data.id || "";
+
+        card.innerHTML = `
+            <input type="text" class="form-input cert-name" value="${data.name || ''}" placeholder="e.g. AWS Certified Solutions Architect">
+            <button type="button" class="btn btn-secondary" onclick="removeCertificationCard(this)" style="padding: 0.5rem;"><i class="bx bx-trash" style="color: #f87171;"></i></button>
+        `;
+        container.appendChild(card);
+    }
+
+    function removeCertificationCard(button) {
+        const row = button.closest(".cert-entry");
+        const id = row.dataset.id;
+        if (id) rbState.deletedCertificationIds.push(id);
+        row.remove();
+    }
+
+    // ── Save Resume Data ─────────────────────────────────────────────────────
+    async function saveAllResumeData() {
+        const saveBtn = document.getElementById("btn-save-resume");
+        
+        // Basic Form Validation
+        const name = document.getElementById("rb-name").value.trim();
+        const country = document.getElementById("rb-country").value.trim();
+        if (!name || !country) {
+            showToast("Please fill in Name and Country details.", "warning");
+            return;
+        }
+
+        saveBtn.disabled = true;
+        showSpinner("Saving profile details...");
+
+        try {
+            // 1. Save Core Profile Info (Personal Info + Skills + Preferred title/location keywords)
+            const profileBody = {
+                name: name,
+                email: document.getElementById("rb-email").value.trim(),
+                phone: document.getElementById("rb-phone").value.trim(),
+                location: document.getElementById("rb-location").value.trim(),
+                country: country,
+                summary: document.getElementById("rb-summary").value.trim(),
+                skills: rbState.skills,
+                preferred_job_titles: rbState.preferred_job_titles,
+                preferred_locations: rbState.preferred_locations
+            };
+            
+            const profileRes = await fetch("/api/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(profileBody)
+            });
+            
+            if (!profileRes.ok) throw new Error("Failed to save core profile info.");
+
+            // 2. Perform deletions of experience/projects/education/certs
+            for (let id of rbState.deletedExperienceIds) {
+                await fetch(`/api/profile/experience/${id}`, { method: "DELETE" });
+            }
+            rbState.deletedExperienceIds = [];
+
+            for (let id of rbState.deletedProjectIds) {
+                await fetch(`/api/profile/project/${id}`, { method: "DELETE" });
+            }
+            rbState.deletedProjectIds = [];
+
+            for (let id of rbState.deletedEducationIds) {
+                await fetch(`/api/profile/education/${id}`, { method: "DELETE" });
+            }
+            rbState.deletedEducationIds = [];
+
+            for (let id of rbState.deletedCertificationIds) {
+                await fetch(`/api/profile/certification/${id}`, { method: "DELETE" });
+            }
+            rbState.deletedCertificationIds = [];
+
+            // 3. Save current experiences
+            const expCards = document.querySelectorAll(".exp-entry");
+            for (let card of expCards) {
+                const bullets = Array.from(card.querySelectorAll(".exp-bullet"))
+                    .map(b => b.value.trim())
+                    .filter(b => b);
+
+                const expBody = {
+                    id: card.dataset.id ? parseInt(card.dataset.id) : null,
+                    company: card.querySelector(".exp-company").value.trim(),
+                    title: card.querySelector(".exp-title").value.trim(),
+                    start_date: card.querySelector(".exp-start").value.trim(),
+                    end_date: card.querySelector(".exp-end").value.trim(),
+                    is_current: card.querySelector(".exp-current").checked,
+                    bullets: bullets
+                };
+                
+                // Only save if company or title is provided
+                if (expBody.company || expBody.title) {
+                    const res = await fetch("/api/profile/experience", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(expBody)
+                    });
+                    const d = await res.json();
+                    if (d.id) card.dataset.id = d.id; // Store saved ID on the DOM card
+                }
+            }
+
+            // 4. Save current projects
+            const projCards = document.querySelectorAll(".proj-entry");
+            for (let card of projCards) {
+                const projBody = {
+                    id: card.dataset.id ? parseInt(card.dataset.id) : null,
+                    name: card.querySelector(".proj-name").value.trim(),
+                    description: card.querySelector(".proj-desc").value.trim(),
+                    technologies: card.techList
+                };
+                if (projBody.name) {
+                    const res = await fetch("/api/profile/project", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(projBody)
+                    });
+                    const d = await res.json();
+                    if (d.id) card.dataset.id = d.id;
+                }
+            }
+
+            // 5. Save current education
+            const eduCards = document.querySelectorAll(".edu-entry");
+            for (let card of eduCards) {
+                const eduBody = {
+                    id: card.dataset.id ? parseInt(card.dataset.id) : null,
+                    institution: card.querySelector(".edu-institution").value.trim(),
+                    degree: card.querySelector(".edu-degree").value.trim(),
+                    field: card.querySelector(".edu-field").value.trim(),
+                    year: card.querySelector(".edu-year").value.trim()
+                };
+                if (eduBody.institution) {
+                    const res = await fetch("/api/profile/education", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(eduBody)
+                    });
+                    const d = await res.json();
+                    if (d.id) card.dataset.id = d.id;
+                }
+            }
+
+            // 6. Save certifications
+            const certRows = document.querySelectorAll(".cert-entry");
+            for (let row of certRows) {
+                const certBody = {
+                    id: row.dataset.id ? parseInt(row.dataset.id) : null,
+                    name: row.querySelector(".cert-name").value.trim()
+                };
+                if (certBody.name) {
+                    const res = await fetch("/api/profile/certification", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(certBody)
+                    });
+                    const d = await res.json();
+                    if (d.id) row.dataset.id = d.id;
+                }
+            }
+
+            hideSpinner();
+            showToast("Resume profile saved successfully!", "success");
+        } catch (err) {
+            hideSpinner();
+            showToast("An error occurred while saving your profile data.", "error");
+            console.error(err);
+        } finally {
+            saveBtn.disabled = false;
+        }
+    }
+
+    // Download PDF Trigger
+    function downloadResumePDF() {
+        showToast("Generating and downloading your resume PDF...", "info");
+        window.location.href = "/api/profile/download-pdf";
+    }
+</script>
+{% endblock %}
