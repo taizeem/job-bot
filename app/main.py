@@ -45,7 +45,6 @@ def init_db_command() -> None:
         # Greenhouse companies
         {"name": "Stripe", "greenhouse_token": "stripe", "website": "https://stripe.com"},
         {"name": "Figma", "greenhouse_token": "figma", "website": "https://figma.com"},
-        {"name": "Notion", "greenhouse_token": "notion", "website": "https://notion.so"},
         {"name": "Reddit", "greenhouse_token": "reddit", "website": "https://reddit.com"},
         {"name": "Airbnb", "greenhouse_token": "airbnb", "website": "https://airbnb.com"},
         {"name": "Vercel", "greenhouse_token": "vercel", "website": "https://vercel.com"},
@@ -55,6 +54,7 @@ def init_db_command() -> None:
         {"name": "Palantir", "lever_token": "palantir", "website": "https://palantir.com"},
         
         # Ashby companies
+        {"name": "Notion", "ashby_token": "notion", "website": "https://notion.so"},
         {"name": "Sentry", "ashby_token": "sentry", "website": "https://sentry.io"},
         {"name": "Linear", "ashby_token": "linear", "website": "https://linear.app"},
         {"name": "Runway", "ashby_token": "runway", "website": "https://runwayml.com"},
@@ -65,9 +65,10 @@ def init_db_command() -> None:
     db = SessionLocal()
     try:
         seeded_count = 0
+        updated_count = 0
         for comp_data in starter_companies:
-            exists = db.query(Company).filter(Company.name == comp_data["name"]).first()
-            if not exists:
+            company = db.query(Company).filter(Company.name == comp_data["name"]).first()
+            if not company:
                 company = Company(
                     name=comp_data["name"],
                     website=comp_data.get("website"),
@@ -77,8 +78,15 @@ def init_db_command() -> None:
                 )
                 db.add(company)
                 seeded_count += 1
+            else:
+                # Update tokens in case they migrated ATS platforms
+                company.website = comp_data.get("website", company.website)
+                company.greenhouse_token = comp_data.get("greenhouse_token")
+                company.lever_token = comp_data.get("lever_token")
+                company.ashby_token = comp_data.get("ashby_token")
+                updated_count += 1
         db.commit()
-        console.print(f"[bold green][OK] Seeded {seeded_count} starter companies.[/bold green]")
+        console.print(f"[bold green][OK] Seeded {seeded_count} and updated {updated_count} starter companies.[/bold green]")
     except Exception as e:
         db.rollback()
         console.print(f"[bold red][ERROR] Failed to seed companies: {e}[/bold red]")

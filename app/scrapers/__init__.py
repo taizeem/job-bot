@@ -59,9 +59,16 @@ async def run_all_scrapers() -> dict[str, Any]:
             - ``duplicates``: Jobs skipped as duplicates.
             - ``per_source``: Breakdown per scraper source.
     """
+    from app.database.models import UserProfile
+    
+    db = SessionLocal()
+    profile = db.query(UserProfile).first()
+    country = profile.country.strip() if profile and profile.country else None
+    db.close()
+    
     scrapers = [
-        RemoteOKScraper(),
-        RemotiveScraper(),
+        RemoteOKScraper(tag=country),
+        RemotiveScraper(search=country),
         WeWorkRemotelyScraper(),
         GreenhouseScraper(),
         LeverScraper(),

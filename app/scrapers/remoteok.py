@@ -36,6 +36,10 @@ class RemoteOKScraper(BaseScraper):
     _MAX_RETRIES: int = 3
     _INITIAL_BACKOFF: float = 5.0  # seconds
 
+    def __init__(self, tag: str | None = None) -> None:
+        super().__init__()
+        self.tag = tag
+
     async def fetch_jobs(self) -> list[dict[str, Any]]:
         """Fetch raw job listings from RemoteOK.
 
@@ -48,9 +52,14 @@ class RemoteOKScraper(BaseScraper):
         client = await self._get_client()
         backoff = self._INITIAL_BACKOFF
 
+        # Append tag filter if specified (e.g. tag=india)
+        url = self.base_url
+        if self.tag:
+            url = f"{url}?tag={self.tag.lower().strip()}"
+
         for attempt in range(1, self._MAX_RETRIES + 1):
             try:
-                response = await client.get(self.base_url)
+                response = await client.get(url)
 
                 if response.status_code == 429:
                     retry_after = float(
