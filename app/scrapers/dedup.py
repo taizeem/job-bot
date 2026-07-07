@@ -140,76 +140,140 @@ def filter_by_profile(
     jobs: list[dict[str, Any]],
     db_session: Session,
 ) -> list[dict[str, Any]]:
-    """Filter out scraped jobs that don't match candidate skills or location."""
-    from app.database.models import Resume
+    """Filter out scraped jobs that don't match candidate skills, location, or preferred titles."""
+    from app.database.models import UserProfile, Resume
     import re
-    
-    # 1. Fetch primary resume
-    resume = db_session.query(Resume).filter(Resume.is_primary == True).first()
-    if not resume or not resume.parsed_data:
-        # If no resume exists yet, we keep all jobs so they are visible
-        logger.info("No primary resume found in DB during scraping. Keeping all scraped jobs.")
-        return jobs
-        
-    try:
-        profile = json.loads(resume.parsed_data)
-    except Exception:
-        logger.warning("Failed to parse resume JSON profile during scraping filter.")
-        return jobs
-        
-    skills = [s.strip().lower() for s in profile.get("skills", []) if s.strip()]
-    candidate_loc = profile.get("location", "").strip().lower()
-    
+
+    # Try UserProfile first
+    profile = db_session.query(UserProfile).first()
+    skills = []
+    preferred_titles = []
+    preferred_locs = []
+    country = ""
+    candidate_loc = ""
+    using_profile = False
+
+    if profile and profile.name:
+        using_profile = True
+        try:
+            skills = json.loads(profile.skills) if profile.skills else []
+            preferred_titles = json.loads(profile.preferred_job_titles) if profile.preferred_job_titles else []
+            preferred_locs = json.loads(profile.preferred_locations) if profile.preferred_locations else []
+            country = profile.country or ""
+            candidate_loc = profile.location or ""
+        except Exception as e:
+            logger.warning("Failed to parse UserProfile JSON fields during scraping filter: %s", e)
+            using_profile = False
+
+    if not using_profile:
+        # Fallback to legacy Resume
+        resume = db_session.query(Resume).filter(Resume.is_primary == True).first()
+        if not resume or not resume.parsed_data:
+            logger.info("No UserProfile or primary Resume found in DB. Keeping all scraped jobs.")
+            return jobs
+        try:
+            resume_data = json.loads(resume.parsed_data)
+            skills = resume_data.get("skills", [])
+            candidate_loc = resume_data.get("location", "")
+        except Exception:
+            logger.warning("Failed to parse Resume JSON during scraping filter.")
+            return jobs
+
+    # Normalize fields
+    skills = [s.strip().lower() for s in skills if s.strip()]
+    preferred_titles = [t.strip().lower() for t in preferred_titles if t.strip()]
+    preferred_locs = [l.strip().lower() for l in preferred_locs if l.strip()]
+    country = country.strip().lower()
+    candidate_loc = candidate_loc.strip().lower()
+
     if not skills:
-        logger.info("Primary resume has no skills defined. Keeping all scraped jobs.")
+        logger.info("No skills defined in profile/resume. Keeping all scraped jobs.")
         return jobs
-        
+
     filtered = []
     for job in jobs:
-        # Title and Description search fields
         title = (job.get("title") or "").lower()
         desc = (job.get("description") or "").lower()
-        job_skills = [s.lower() for s in (job.get("skills") or []) if s]
+        location_raw = (job.get("location") or "").lower()
+        is_remote = job.get("remote", False) or "remote" in location_raw or "anywhere" in location_raw
         
-        # A. Skills check: Does the job description/title/tags mention at least one skill?
+        job_skills_tags = []
+        # If scraper normalized skills lists
+        if isinstance(job.get("skills"), list):
+            job_skills_tags = [s.lower() for s in job["skills"] if s]
+        elif isinstance(job.get("skills"), str):
+            try:
+                parsed = json.loads(job["skills"])
+                if isinstance(parsed, list):
+                    job_skills_tags = [s.lower() for s in parsed if s]
+            except Exception:
+                pass
+
+        # 1. Skills overlap check:
+        # Does the job description/title/tags mention at least one candidate skill?
         has_skill_match = False
         
-        # 1. Direct match on job tags/skills
-        for s in job_skills:
+        # Direct match on job tags
+        for s in job_skills_tags:
             if s in skills:
                 has_skill_match = True
                 break
                 
-        # 2. Text keyword match in title or description using word boundaries
+        # Substring/word-boundary check in title/description
         if not has_skill_match:
             for skill in skills:
-                escaped_skill = re.escape(skill)
-                # Word boundary check (\b) to avoid false substring matches
-                pattern = rf"\b{escaped_skill}\b"
-                if re.search(pattern, title) or re.search(pattern, desc):
-                    has_skill_match = True
-                    break
-                    
+                if len(skill) <= 3:
+                    pattern = rf"\b{re.escape(skill)}\b"
+                    if re.search(pattern, title) or re.search(pattern, desc):
+                        has_skill_match = True
+                        break
+                else:
+                    if skill in title or skill in desc:
+                        has_skill_match = True
+                        break
+                        
         if not has_skill_match:
-            # Skip job - no matching skills
             logger.debug("Filtering out job %s - no skill overlap.", job.get("title"))
             continue
-            
-        # B. Location check:
-        # If the job is NOT remote (onsite/hybrid), check if it matches candidate location.
-        is_remote = job.get("remote", False)
-        job_loc = (job.get("location") or "").lower()
-        
-        if not is_remote and candidate_loc and job_loc:
-            # Check if candidate location matches job location
-            if candidate_loc not in job_loc and job_loc not in candidate_loc:
-                logger.debug("Filtering out job %s - location mismatch (Job: %s, Candidate: %s)", job.get("title"), job_loc, candidate_loc)
+
+        # 2. Location check:
+        # If job is remote, it always matches. Otherwise, check location keywords.
+        if not is_remote:
+            location_match = False
+            # Check country
+            if country and country in location_raw:
+                location_match = True
+            # Check candidate location
+            if not location_match and candidate_loc and (candidate_loc in location_raw or location_raw in candidate_loc):
+                location_match = True
+            # Check preferred locations
+            if not location_match:
+                for loc in preferred_locs:
+                    if loc in location_raw:
+                        location_match = True
+                        break
+            # If onsite/hybrid and mismatch, skip it
+            if not location_match and (country or preferred_locs or candidate_loc):
+                logger.debug("Filtering out job %s - location mismatch.", job.get("title"))
                 continue
-                
+
+        # 3. Title check:
+        # If user defined preferred job titles, check if at least one matches the job title.
+        if preferred_titles:
+            title_match = False
+            for t in preferred_titles:
+                if t in title or title in t:
+                    title_match = True
+                    break
+            if not title_match:
+                logger.debug("Filtering out job %s - preferred title mismatch.", job.get("title"))
+                continue
+
         filtered.append(job)
-        
-    logger.info("Profile Filter: Kept %d of %d scraped jobs based on resume skills/location", len(filtered), len(jobs))
+
+    logger.info("Profile Filter: Kept %d of %d scraped jobs based on profile match", len(filtered), len(jobs))
     return filtered
+
 
 
 def store_jobs(
