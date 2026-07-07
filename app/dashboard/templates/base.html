@@ -157,6 +157,8 @@
             }, 4000);
         }
 
+        let scrapePollInterval = null;
+
         async function triggerScrape() {
             const btn = document.getElementById('btn-scrape');
             btn.disabled = true;
@@ -165,15 +167,43 @@
                 const res = await fetch("/api/scrape", { method: "POST" });
                 const data = await res.json();
                 if (data.status === "success") {
-                    showToast("Job scraping started in the background. Refresh in a few minutes to view new jobs!", "success");
+                    showToast("Job scraping started. Monitoring progress...", "success");
+                    startScrapePoll();
                 } else {
                     showToast(`Scrape failed: ${data.message}`, "error");
+                    btn.disabled = false;
                 }
             } catch (e) {
                 showToast("Scrape failed: Network connection error.", "error");
-            } finally {
-                setTimeout(() => { btn.disabled = false; }, 5000);
+                btn.disabled = false;
             }
+        }
+
+        function startScrapePoll() {
+            if (scrapePollInterval) clearInterval(scrapePollInterval);
+            
+            showSpinner("Scraping jobs from platforms...");
+            
+            scrapePollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch("/api/scrape/status");
+                    const data = await res.json();
+                    if (data.status === "idle") {
+                        clearInterval(scrapePollInterval);
+                        hideSpinner();
+                        document.getElementById('btn-scrape').disabled = false;
+                        
+                        showToast(`Scrape complete! Found ${data.total_scraped} total jobs (${data.new_jobs} new).`, "success");
+                        
+                        // Automatically reload page to display newly found jobs in real-time
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    }
+                } catch (e) {
+                    console.error("Error polling scrape status:", e);
+                }
+            }, 2000);
         }
 
         let matchPollInterval = null;

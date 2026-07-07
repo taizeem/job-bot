@@ -213,23 +213,40 @@ async def settings_page(request: Request, db: Session = Depends(get_db)):
 
 from fastapi import BackgroundTasks
 
-# Global matching task states
+# Global matching and scraping task states
 IS_MATCHING = False
 LAST_MATCHED_COUNT = 0
 LAST_DELETED_COUNT = 0
 
+IS_SCRAPING = False
+LAST_SCRAPE_SUMMARY = {
+    "total_scraped": 0,
+    "new_jobs": 0,
+    "duplicates": 0
+}
+
 
 def run_scrape_task():
     """Wrapper to run async scraping pipeline and follow-up matching in a background thread."""
+    global IS_SCRAPING, LAST_SCRAPE_SUMMARY
     import asyncio
     from app.ai.matcher import run_matching_pipeline
     from app.database.engine import SessionLocal
+    IS_SCRAPING = True
     try:
         # 1. Scraping loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(run_all_scrapers())
+        summary = loop.run_until_complete(run_all_scrapers())
         loop.close()
+        
+        # Save summary
+        if isinstance(summary, dict):
+            LAST_SCRAPE_SUMMARY = {
+                "total_scraped": summary.get("total_scraped", 0),
+                "new_jobs": summary.get("new_jobs", 0),
+                "duplicates": summary.get("duplicates", 0),
+            }
         
         # 2. Automated Matching immediately after
         logger.info("Background Scrape: Scraping complete. Starting follow-up matching pipeline...")
@@ -241,6 +258,8 @@ def run_scrape_task():
             db.close()
     except Exception as e:
         logger.error("Background scrape and match task failed: %s", e)
+    finally:
+        IS_SCRAPING = False
 
 
 def run_match_task():
@@ -266,6 +285,18 @@ async def trigger_scrape(background_tasks: BackgroundTasks):
     """Trigger the background scraping pipeline and return immediately."""
     background_tasks.add_task(run_scrape_task)
     return {"status": "success", "message": "Job scraping started in the background."}
+
+
+@app.get("/api/scrape/status")
+async def get_scrape_status():
+    """Check progress of active scraping task."""
+    global IS_SCRAPING, LAST_SCRAPE_SUMMARY
+    return {
+        "status": "running" if IS_SCRAPING else "idle",
+        "total_scraped": LAST_SCRAPE_SUMMARY.get("total_scraped", 0),
+        "new_jobs": LAST_SCRAPE_SUMMARY.get("new_jobs", 0),
+        "duplicates": LAST_SCRAPE_SUMMARY.get("duplicates", 0)
+    }
 
 
 @app.post("/api/match")
