@@ -145,6 +145,24 @@ def match_command() -> None:
         db.close()
 
 
+@cli.command("cleanup-jobs")
+@click.option("--threshold", default=0.70, type=float, help="Prune jobs with match score below this threshold.")
+def cleanup_jobs_command(threshold: float) -> None:
+    """Prune low-matching jobs from the database (keeps active applications)."""
+    from app.database.engine import SessionLocal
+    from app.database.cleanup import cleanup_low_matching_jobs
+
+    console.print(f"[bold blue]* Pruning jobs with match score below {int(threshold * 100)}%...[/bold blue]")
+    db = SessionLocal()
+    try:
+        deleted = cleanup_low_matching_jobs(db, threshold)
+        console.print(f"[bold green][OK] Pruned {deleted} jobs successfully.[/bold green]")
+    except Exception as e:
+        console.print(f"[bold red][ERROR] Cleanup failed: {e}[/bold red]")
+    finally:
+        db.close()
+
+
 @cli.command("parse-resume")
 @click.option(
     "--path",

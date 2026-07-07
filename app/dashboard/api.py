@@ -54,8 +54,8 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 @app.get("/", response_class=HTMLResponse)
 async def index_page(request: Request, db: Session = Depends(get_db)):
     """Render the dashboard stats home page."""
-    # Compute counts
-    total_jobs = db.query(Job).count()
+    # Compute counts (only show unmatched or >= 70% match)
+    total_jobs = db.query(Job).filter((Job.match_score == None) | (Job.match_score >= 0.70)).count()
     applied_count = db.query(Application).filter(Application.status == "applied").count()
     interview_count = db.query(Application).filter(Application.status == "interview").count()
     rejected_count = db.query(Application).filter(Application.status == "rejected").count()
@@ -104,7 +104,8 @@ async def jobs_page(
 ):
     """Render job listings list with pagination and optional filters."""
     per_page = 50
-    q = db.query(Job)
+    # Enforce minimum 70% match score or unmatched for jobs shown
+    q = db.query(Job).filter((Job.match_score == None) | (Job.match_score >= 0.70))
     
     # Safely parse min_score as an integer
     score_val = None

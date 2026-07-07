@@ -51,7 +51,7 @@ class Settings(BaseSettings):
         description="If True, delete jobs with match score below the minimum threshold during evaluation."
     )
     min_match_threshold: float = Field(
-        default=0.50,
+        default=0.70,
         description="Minimum match score threshold (0.0 to 1.0) below which jobs will be deleted."
     )
 
