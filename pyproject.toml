@@ -1,0 +1,21 @@
+[project]
+name = "job-bot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "taizeem0@gmail.com", email = "taizeem0@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "django>=5.2.18",
+    "pypdf>=6.21.1",
+    "python-dotenv>=1.2.4",
+]
+
+[project.scripts]
+job-bot = "job_bot:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
