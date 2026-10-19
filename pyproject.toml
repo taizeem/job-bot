@@ -13,6 +13,7 @@ dependencies = [
     "playwright>=1.64.0",
     "pypdf>=6.21.1",
     "python-dotenv>=1.2.4",
+    "requests>=2.34.2",
 ]
 
 [project.scripts]
