@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Job Application Bot{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <nav class="bg-indigo-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-lg bg-indigo-500 flex items-center justify-center font-bold text-xl text-white shadow">
+                        ⚡
+                    </div>
+                    <div>
+                        <a href="{% url 'dashboard' %}" class="font-bold text-lg tracking-tight hover:text-indigo-200 transition">JobBot AI</a>
+                        <span class="hidden sm:inline-block text-xs bg-indigo-700 text-indigo-200 px-2 py-0.5 rounded-full ml-2">Ollama Powered</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <a href="{% url 'dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-800 transition">Dashboard</a>
+                    <a href="{% url 'resume_upload' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-800 transition">Upload Resume</a>
+                    <a href="/admin/" target="_blank" class="px-3 py-2 rounded-md text-sm font-medium bg-indigo-800 hover:bg-indigo-700 transition">Django Admin</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 w-full">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-3 p-4 rounded-lg flex items-center justify-between shadow-sm {% if message.tags == 'success' %}bg-emerald-50 text-emerald-800 border border-emerald-200{% elif message.tags == 'error' %}bg-rose-50 text-rose-800 border border-rose-200{% elif message.tags == 'warning' %}bg-amber-50 text-amber-800 border border-amber-200{% else %}bg-sky-50 text-sky-800 border border-sky-200{% endif %}">
+                    <div class="flex items-center space-x-2">
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Main Dynamic Content Block -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        AI-Powered Job Application Bot &bull; Django &bull; Ollama &bull; Playwright &bull; Telegram
+    </footer>
+
+</body>
+</html>

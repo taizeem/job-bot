@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Application Tracking Dashboard - JobBot AI{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Header & Action Buttons -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Job Applications Dashboard</h1>
+            <p class="text-sm text-slate-500 mt-1">
+                Active Resume: 
+                {% if active_resume %}
+                    <span class="font-semibold text-slate-700">{{ active_resume.name }}</span> 
+                    <span class="text-xs text-slate-400">({{ active_resume.extracted_skills|length }} skills detected)</span>
+                {% else %}
+                    <span class="text-rose-600 font-semibold">None (Upload a resume to begin)</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <a href="{% url 'resume_upload' %}" class="inline-flex items-center px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition">
+                📄 Upload Resume
+            </a>
+            
+            <form method="POST" action="{% url 'trigger_bot' %}">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition">
+                    🤖 Run Auto-Apply Bot
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- KPI Metric Cards Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Tracked</span>
+            <div class="mt-2 flex items-baseline justify-between">
+                <span class="text-3xl font-extrabold text-slate-900">{{ total_applications }}</span>
+                <span class="text-xs text-slate-400">jobs</span>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Applied</span>
+            <div class="mt-2 flex items-baseline justify-between">
+                <span class="text-3xl font-extrabold text-emerald-600">{{ applied_count }}</span>
+                <span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">Submitted</span>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-semibold text-purple-600 uppercase tracking-wider">Interviews</span>
+            <div class="mt-2 flex items-baseline justify-between">
+                <span class="text-3xl font-extrabold text-purple-600">{{ interview_count }}</span>
+                <span class="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-medium">Alert Hook</span>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Avg Match Score</span>
+            <div class="mt-2 flex items-baseline justify-between">
+                <span class="text-3xl font-extrabold text-indigo-600">{{ avg_score }}%</span>
+                <span class="text-xs text-slate-400">Ollama AI</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex items-center space-x-2 overflow-x-auto">
+            <a href="{% url 'dashboard' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if not current_status %}bg-slate-900 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                All ({{ total_applications }})
+            </a>
+            <a href="?status=APPLIED" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if current_status == 'APPLIED' %}bg-emerald-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                Applied ({{ applied_count }})
+            </a>
+            <a href="?status=INTERVIEW" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if current_status == 'INTERVIEW' %}bg-purple-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                Interviews ({{ interview_count }})
+            </a>
+            <a href="?status=PENDING" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if current_status == 'PENDING' %}bg-amber-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                Pending Match
+            </a>
+            <a href="?status=REJECTED" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if current_status == 'REJECTED' %}bg-rose-600 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                Rejected ({{ rejected_count }})
+            </a>
+        </div>
+
+        <form method="GET" class="flex items-center space-x-2">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search role, company..." class="px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48 sm:w-64">
+            {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+            <button type="submit" class="px-3 py-1.5 text-xs font-semibold bg-slate-800 text-white rounded-lg hover:bg-slate-700">Filter</button>
+        </form>
+    </div>
+
+    <!-- Applications Table -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        <th class="py-3 px-4">Role & Company</th>
+                        <th class="py-3 px-4">Match Score</th>
+                        <th class="py-3 px-4">Status</th>
+                        <th class="py-3 px-4">Applied Date</th>
+                        <th class="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for app in applications %}
+                        <tr class="hover:bg-slate-50/75 transition">
+                            <td class="py-3.5 px-4">
+                                <a href="{% url 'application_detail' app.id %}" class="font-semibold text-indigo-600 hover:text-indigo-800 block">
+                                    {{ app.job.title }}
+                                </a>
+                                <span class="text-xs text-slate-500">{{ app.job.company }} &bull; {{ app.job.location }}</span>
+                            </td>
+                            <td class="py-3.5 px-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold {% if app.match_score >= 80 %}bg-emerald-100 text-emerald-800{% elif app.match_score >= 60 %}bg-amber-100 text-amber-800{% else %}bg-slate-100 text-slate-600{% endif %}">
+                                    {{ app.match_score }}%
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {% if app.status == 'APPLIED' %}bg-sky-100 text-sky-800{% elif app.status == 'INTERVIEW' %}bg-purple-100 text-purple-800 ring-1 ring-purple-400{% elif app.status == 'REJECTED' %}bg-rose-100 text-rose-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                                    {{ app.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4 text-xs text-slate-500">
+                                {% if app.applied_at %}
+                                    {{ app.applied_at|date:"M d, Y H:i" }}
+                                {% else %}
+                                    <span class="text-slate-400">&mdash;</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3.5 px-4 text-right">
+                                <a href="{% url 'application_detail' app.id %}" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                                    View Details &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-slate-400 text-sm">
+                                No applications found. Upload a resume and click <strong>"Run Auto-Apply Bot"</strong> to start matching!
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Automation Audit Logs -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900 mb-3">Live Automation & Pipeline Logs</h2>
+        <div class="space-y-2 max-h-56 overflow-y-auto font-mono text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
+            {% for log in recent_logs %}
+                <div class="flex items-start space-x-2">
+                    <span class="text-slate-400 shrink-0">[{{ log.timestamp|date:"H:i:s" }}]</span>
+                    <span class="font-semibold shrink-0 {% if log.level == 'ERROR' %}text-rose-600{% elif log.level == 'WARNING' %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                        [{{ log.level }}]
+                    </span>
+                    <span class="truncate">{{ log.message }}</span>
+                </div>
+            {% empty %}
+                <p class="text-slate-400 font-sans text-xs">No activity logs recorded yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

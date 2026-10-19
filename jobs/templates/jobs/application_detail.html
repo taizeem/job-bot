@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}{{ application.job.title }} - Application Details{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Breadcrumb & Status Banner -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <a href="{% url 'dashboard' %}" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">&larr; Back to Dashboard</a>
+            <h1 class="text-2xl font-bold text-slate-900 mt-1">{{ application.job.title }}</h1>
+            <p class="text-sm text-slate-500">{{ application.job.company }} &bull; {{ application.job.location }}</p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <span class="text-xs text-slate-400 font-medium">Match Fit:</span>
+            <span class="px-3 py-1 rounded-full text-sm font-extrabold {% if application.match_score >= 80 %}bg-emerald-100 text-emerald-800{% elif application.match_score >= 60 %}bg-amber-100 text-amber-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                {{ application.match_score }}%
+            </span>
+        </div>
+    </div>
+
+    <!-- Main Grid: Job Details & Status Action -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left 2 Cols: Job Details & AI Cover Letter -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Job Description Card -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-base font-bold text-slate-900">Job Description</h2>
+                <div class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">
+                    {{ application.job.description }}
+                </div>
+                
+                <div class="pt-3 border-t border-slate-100">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Target Job URL:</span>
+                    <a href="{{ application.job.url }}" target="_blank" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium block truncate mt-0.5">
+                        {{ application.job.url }}
+                    </a>
+                </div>
+            </div>
+
+            <!-- Tailored Cover Letter Card -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-bold text-slate-900">AI-Generated Tailored Cover Letter</h2>
+                    <span class="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-medium">Ollama Generated</span>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm text-slate-800 font-serif leading-relaxed whitespace-pre-line">
+                    {{ application.cover_letter|default:"No cover letter generated for this submission." }}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right 1 Col: Status Transition & Audit Timeline -->
+        <div class="space-y-6">
+
+            <!-- Status Transition Card -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-base font-bold text-slate-900">Update Application Status</h2>
+                
+                <form method="POST" action="{% url 'update_status' application.id %}" class="space-y-3">
+                    {% csrf_token %}
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Current Status</label>
+                        {{ status_form.status }}
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Recruiter / Interview Notes</label>
+                        {{ status_form.notes }}
+                    </div>
+
+                    <button type="submit" class="w-full py-2 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow-sm transition">
+                        Save Status Update
+                    </button>
+                </form>
+
+                <p class="text-xs text-purple-700 bg-purple-50 p-2.5 rounded-lg border border-purple-200">
+                    💡 <strong>Phase 4 Hook:</strong> Selecting <em>"Interview Scheduled"</em> and saving will trigger a real-time Telegram alert!
+                </p>
+            </div>
+
+            <!-- Audit Trail Log for this Application -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <h2 class="text-base font-bold text-slate-900">Application Audit Trail</h2>
+                <div class="space-y-2 max-h-72 overflow-y-auto text-xs">
+                    {% for log in logs %}
+                        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+                            <div class="flex items-center justify-between text-slate-400">
+                                <span>{{ log.timestamp|date:"M d, H:i" }}</span>
+                                <span class="font-semibold {% if log.level == 'ERROR' %}text-rose-600{% else %}text-indigo-600{% endif %}">
+                                    {{ log.level }}
+                                </span>
+                            </div>
+                            <p class="text-slate-700 font-sans">{{ log.message }}</p>
+                        </div>
+                    {% empty %}
+                        <p class="text-xs text-slate-400">No logs for this application yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

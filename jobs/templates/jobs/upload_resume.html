@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Resume - JobBot AI{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <div class="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-sm">
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-slate-900">Upload Your Resume</h1>
+            <p class="text-sm text-slate-500 mt-1">
+                Upload your resume in PDF format. Our parser will extract your contact info, technical skills, and experience to feed the local Ollama matching engine.
+            </p>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Candidate Profile Name</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    <p class="text-xs text-rose-600 mt-1">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Resume File (PDF only)</label>
+                {{ form.file }}
+                {% if form.file.errors %}
+                    <p class="text-xs text-rose-600 mt-1">{{ form.file.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="pt-2">
+                <button type="submit" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition">
+                    Extract Skills & Save Resume
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Previously Uploaded Resumes -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900 mb-3">Recently Uploaded Resumes</h2>
+        <div class="divide-y divide-slate-100">
+            {% for r in recent_resumes %}
+                <div class="py-3 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">{{ r.name }}</p>
+                        <p class="text-xs text-slate-400">Uploaded on {{ r.uploaded_at|date:"M d, Y H:i" }} &bull; {{ r.extracted_skills|length }} skills</p>
+                    </div>
+                    {% if r.file %}
+                        <a href="{{ r.file.url }}" target="_blank" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold">
+                            View PDF &rarr;
+                        </a>
+                    {% endif %}
+                </div>
+            {% empty %}
+                <p class="text-xs text-slate-400">No resumes uploaded yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
