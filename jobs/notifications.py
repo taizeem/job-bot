@@ -15,8 +15,17 @@ class TelegramNotificationService:
         chat_id: Optional[str] = None,
         timeout: int = 6,
     ):
-        self.bot_token = bot_token or getattr(settings, "TELEGRAM_BOT_TOKEN", "")
-        self.chat_id = chat_id or getattr(settings, "TELEGRAM_CHAT_ID", "")
+        # Only fall back to settings when the argument is None, not when explicitly passed as ""
+        self.bot_token = (
+            getattr(settings, "TELEGRAM_BOT_TOKEN", "")
+            if bot_token is None
+            else bot_token
+        )
+        self.chat_id = (
+            getattr(settings, "TELEGRAM_CHAT_ID", "")
+            if chat_id is None
+            else chat_id
+        )
         self.timeout = timeout
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
 
