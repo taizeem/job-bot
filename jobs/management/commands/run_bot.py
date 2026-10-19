@@ -1,10 +1,11 @@
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from jobs.models import JobListing, Resume
 from jobs.services import JobApplicationPipeline
 
 
 class Command(BaseCommand):
-    help = "Runs the AI Job Matching and Auto-Apply Pipeline"
+    help = "Runs the AI Job Matching (Ollama) and Auto-Apply Pipeline"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -35,10 +36,15 @@ class Command(BaseCommand):
         limit = options["limit"]
         dry_run = options["dry_run"]
         headless = not options["headed"]
+        ollama_model = getattr(settings, "OLLAMA_MODEL", "llama3.2")
 
-        self.stdout.write(self.style.NOTICE(f"Starting Job Bot (Threshold: {threshold}%, Dry-Run: {dry_run})"))
+        self.stdout.write(
+            self.style.NOTICE(
+                f"Starting Job Bot [Model: Ollama/{ollama_model} | Threshold: {threshold}% | Dry-Run: {dry_run}]"
+            )
+        )
 
-        # 1. Fetch latest active resume
+        # 1. Fetch latest active resume or create a sample one
         resume = Resume.objects.order_by("-uploaded_at").first()
         if not resume:
             self.stdout.write(self.style.WARNING("No resume found in database. Creating a sample resume..."))
@@ -80,7 +86,7 @@ class Command(BaseCommand):
                 location="New York, NY",
                 description="Looking for 10+ years Java, Spring Boot, Oracle DB, and mainframe experience.",
                 required_skills=["Java", "Spring Boot", "Oracle"],
-                url="simulation://[legacybank.com/jobs/999](https://legacybank.com/jobs/999)",
+                url="simulation://legacybank.com/jobs/999",
                 source="Simulated Portal",
             )
             self.stdout.write(self.style.SUCCESS("Seeded 3 sample job listings."))
