@@ -7,7 +7,7 @@ class Resume(models.Model):
     name = models.CharField(
         max_length=255,
         default="Candidate Resume",
-        help_text="A friendly name or candidate name for this resume.",
+        help_text="A friendly name or target profile (e.g. Backend Django vs React Frontend).",
     )
     file = models.FileField(
         upload_to="resumes/",
@@ -38,7 +38,7 @@ class Resume(models.Model):
 
 
 class JobListing(models.Model):
-    """Represents a job vacancy discovered or scraped from job portals."""
+    """Represents a job vacancy discovered from portals or public APIs."""
 
     title = models.CharField(max_length=255)
     company = models.CharField(max_length=255)
@@ -57,8 +57,8 @@ class JobListing(models.Model):
     salary_range = models.CharField(max_length=100, blank=True, default="")
     source = models.CharField(
         max_length=100,
-        default="Automated Portal",
-        help_text="Portal where the job was discovered (e.g. LinkedIn, Indeed, Portal).",
+        default="Live API",
+        help_text="Discovery source (e.g. Remotive API, Greenhouse, Portal).",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -70,15 +70,17 @@ class JobListing(models.Model):
 
 
 class Application(models.Model):
-    """Tracks an application made to a specific job listing using a specific resume."""
+    """Tracks an application made to a job listing using a specific resume."""
 
     STATUS_PENDING = "PENDING"
+    STATUS_NEEDS_REVIEW = "NEEDS_REVIEW"
     STATUS_APPLIED = "APPLIED"
     STATUS_INTERVIEW = "INTERVIEW"
     STATUS_REJECTED = "REJECTED"
 
     STATUS_CHOICES = [
-        (STATUS_PENDING, "Pending Review / Match"),
+        (STATUS_PENDING, "Pending Match"),
+        (STATUS_NEEDS_REVIEW, "Needs Review (Score 65-79%)"),
         (STATUS_APPLIED, "Applied"),
         (STATUS_INTERVIEW, "Interview Scheduled"),
         (STATUS_REJECTED, "Rejected"),
@@ -98,6 +100,8 @@ class Application(models.Model):
         default=0.0,
         help_text="AI match score between 0.0 and 100.0.",
     )
+    matching_skills = models.JSONField(default=list, blank=True)
+    missing_skills = models.JSONField(default=list, blank=True)
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
@@ -111,7 +115,7 @@ class Application(models.Model):
     applied_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="Timestamp when the auto-apply bot submitted the form.",
+        help_text="Timestamp when the application was submitted.",
     )
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
